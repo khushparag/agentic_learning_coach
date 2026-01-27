@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNotifications } from '../../hooks/useNotifications';
+import { useToastNotifications } from '../../hooks/useNotifications';
 import type { NotificationType } from '../../types/notifications';
 
 export interface ToastProps {
@@ -25,21 +25,22 @@ const Toast: React.FC<ToastProps> = ({
   isVisible,
   onClose,
 }) => {
-  const { addNotification } = useNotifications();
+  const { showToast } = useToastNotifications();
 
   useEffect(() => {
     if (isVisible) {
       // Convert simple toast to advanced notification
-      addNotification({
+      showToast({
         type: type as NotificationType,
         title,
         message: message || '',
         duration,
+        priority: 'normal',
+        persistent: false,
         closable: true,
-        onClose: () => onClose(id),
       });
     }
-  }, [isVisible, type, title, message, duration, id, onClose, addNotification]);
+  }, [isVisible, type, title, message, duration, id, onClose, showToast]);
 
   // This component doesn't render anything directly - 
   // the notification system handles the rendering

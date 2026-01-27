@@ -10,7 +10,7 @@ import type {
   CurriculumListResponse,
   ActivateCurriculumRequest,
   BaseResponse,
-} from '../types/api'
+} from '../types/apiTypes'
 
 export class CurriculumService {
   private static readonly BASE_PATH = '/api/v1/curriculum'

@@ -12,7 +12,7 @@ import type {
   ProgressStatsResponse,
   ProgressUpdateRequest,
   BaseResponse,
-} from '../../types/api'
+} from '../../types/apiTypes'
 
 /**
  * Hook to get progress summary for the user

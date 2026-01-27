@@ -19,7 +19,7 @@ import { TrophyIcon as TrophyIconSolid } from '@heroicons/react/24/solid'
 import { Card, Button, Badge, Select, LoadingSpinner } from '../ui'
 import { useAuth } from '../../contexts/AuthContext'
 import { GamificationService } from '../../services/gamificationService'
-import type { LeaderboardEntry } from '../../types/api'
+import type { LeaderboardEntry } from '../../types/apiTypes'
 
 interface GlobalLeaderboardProps {
   className?: string

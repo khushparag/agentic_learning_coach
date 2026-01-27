@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBadgeShowcase, useAchievements } from '../../hooks/api/useGamification';
 import { useAuth } from '../../contexts/AuthContext';

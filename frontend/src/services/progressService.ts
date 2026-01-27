@@ -10,7 +10,7 @@ import type {
   ProgressStatsResponse,
   ProgressUpdateRequest,
   BaseResponse,
-} from '../types/api'
+} from '../types/apiTypes'
 
 export class ProgressService {
   private static readonly BASE_PATH = '/api/v1/progress'

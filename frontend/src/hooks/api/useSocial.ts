@@ -15,7 +15,7 @@ import type {
   StudyGroup,
   StudyGroupProgress,
   ActivityFeedItem,
-} from '../../types/api'
+} from '../../types/apiTypes'
 
 // =============================================================================
 // Peer Challenges Hooks

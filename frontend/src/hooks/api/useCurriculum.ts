@@ -12,7 +12,7 @@ import type {
   CurriculumListResponse,
   ActivateCurriculumRequest,
   BaseResponse,
-} from '../../types/api'
+} from '../../types/apiTypes'
 
 /**
  * Hook to get the user's active curriculum

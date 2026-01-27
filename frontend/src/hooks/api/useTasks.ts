@@ -12,7 +12,7 @@ import type {
   TaskListResponse,
   TaskHintResponse,
   PaginationParams,
-} from '../../types/api'
+} from '../../types/apiTypes'
 
 /**
  * Hook to get tasks scheduled for today

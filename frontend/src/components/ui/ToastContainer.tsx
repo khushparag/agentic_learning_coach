@@ -1,5 +1,5 @@
 import React, { createContext, useContext, ReactNode } from 'react';
-import { useNotifications } from '../../hooks/useNotifications';
+import { useToastNotifications } from '../../hooks/useNotifications';
 import type { NotificationType } from '../../types/notifications';
 
 interface ToastContextType {
@@ -30,20 +30,22 @@ interface ToastProviderProps {
  * This wraps the advanced notifications system with a simpler interface
  */
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
-  const { addNotification, dismissNotification } = useNotifications();
+  const { showToast, dismissToast } = useToastNotifications();
 
   const addToast = (toast: { type: 'success' | 'error' | 'warning' | 'info'; title: string; message?: string; duration?: number }) => {
-    addNotification({
+    showToast({
       type: toast.type as NotificationType,
       title: toast.title,
       message: toast.message || '',
       duration: toast.duration || 5000,
+      priority: 'normal',
+      persistent: false,
       closable: true,
     });
   };
 
   const removeToast = (id: string) => {
-    dismissNotification(id);
+    dismissToast(id);
   };
 
   const success = (title: string, message?: string) => {

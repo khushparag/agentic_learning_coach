@@ -15,7 +15,7 @@ import {
 import { useCreateChallenge, useSocialWithUtils } from '../../hooks/api/useSocial'
 import { useAuthContext } from '../../contexts/AuthContext'
 import { Modal, Button, Input, Select, Textarea } from '../ui'
-import type { CreateChallengeRequest } from '../../types/api'
+import type { CreateChallengeRequest } from '../../types/apiTypes'
 
 interface CreateChallengeModalProps {
   isOpen: boolean

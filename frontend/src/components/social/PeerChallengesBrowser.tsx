@@ -19,7 +19,7 @@ import { Card, Button, Badge, LoadingSpinner, ErrorMessage } from '../ui'
 import ChallengeCard from './ChallengeCard'
 import CreateChallengeModal from './CreateChallengeModal'
 import ChallengeLeaderboard from './ChallengeLeaderboard'
-import type { PeerChallenge } from '../../types/api'
+import type { PeerChallenge } from '../../types/apiTypes'
 
 interface PeerChallengesBrowserProps {
   className?: string

@@ -18,4 +18,4 @@ export type {
   BadgeShowcase,
   StreakInfo,
   XPEvent,
-} from '../../types/api'
+} from '../../types/apiTypes'

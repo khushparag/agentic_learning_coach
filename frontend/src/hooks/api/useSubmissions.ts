@@ -12,7 +12,7 @@ import type {
   SubmissionListResponse,
   FeedbackResponse,
   PaginationParams,
-} from '../../types/api'
+} from '../../types/apiTypes'
 
 /**
  * Hook to submit code for evaluation

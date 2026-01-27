@@ -10,7 +10,7 @@ import type {
   TaskListResponse,
   TaskHintResponse,
   PaginationParams,
-} from '../types/api'
+} from '../types/apiTypes'
 
 export class TasksService {
   private static readonly BASE_PATH = '/api/v1/tasks'

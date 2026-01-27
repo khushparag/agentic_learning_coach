@@ -13,7 +13,7 @@ import type {
   StudyGroup,
   StudyGroupProgress,
   ActivityFeedItem,
-} from '../types/api'
+} from '../types/apiTypes'
 
 export class SocialService {
   private static readonly BASE_PATH = '/social'

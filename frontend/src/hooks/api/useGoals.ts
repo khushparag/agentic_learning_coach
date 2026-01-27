@@ -10,7 +10,7 @@ import type {
   SetGoalsResponse,
   UpdateGoalsRequest,
   BaseResponse,
-} from '../../types/api'
+} from '../../types/apiTypes'
 
 /**
  * Hook to get current learning goals

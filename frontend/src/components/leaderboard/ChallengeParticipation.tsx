@@ -21,7 +21,7 @@ import { Card, Button, Badge, Progress, Modal, LoadingSpinner } from '../ui'
 import { useAuth } from '../../contexts/AuthContext'
 import { SocialService } from '../../services/socialService'
 import { useWebSocket } from '../../hooks/useWebSocket'
-import type { PeerChallenge } from '../../types/api'
+import type { PeerChallenge } from '../../types/apiTypes'
 
 interface ChallengeSession {
   challengeId: string

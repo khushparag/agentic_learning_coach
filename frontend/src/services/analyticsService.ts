@@ -10,7 +10,7 @@ import type {
   ActivityHeatmapData,
   PeerComparison,
   PersonalizedRecommendations,
-} from '../types/api'
+} from '../types/apiTypes'
 
 export class AnalyticsService {
   private static readonly BASE_PATH = '/analytics'

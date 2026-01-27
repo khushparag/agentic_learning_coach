@@ -6,7 +6,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { WebSocketProvider } from '@/contexts/WebSocketContext';
 import { AccessibilityProvider } from '@/contexts/AccessibilityContext';
 import { mockUserProfile } from '../factories';
-import type { UserProfile } from '@/types/api';
+import type { UserProfile } from '@/types/apiTypes';
 
 // Custom render options
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {

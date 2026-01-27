@@ -20,7 +20,7 @@ import { useAuthContext } from '../../contexts/AuthContext'
 import { Card, Button, Badge, Select, LoadingSpinner, ErrorMessage } from '../ui'
 import SharedSolutionCard from './SharedSolutionCard'
 import ShareSolutionModal from './ShareSolutionModal'
-import type { SharedSolution } from '../../types/api'
+import type { SharedSolution } from '../../types/apiTypes'
 
 interface SolutionSharingInterfaceProps {
   className?: string

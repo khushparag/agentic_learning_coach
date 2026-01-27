@@ -16,7 +16,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { useAcceptChallenge, useSubmitChallengeResult, useSocialWithUtils } from '../../hooks/api/useSocial'
 import { Card, Button, Badge, Modal, Input } from '../ui'
-import type { PeerChallenge } from '../../types/api'
+import type { PeerChallenge } from '../../types/apiTypes'
 
 interface ChallengeCardProps {
   challenge: PeerChallenge

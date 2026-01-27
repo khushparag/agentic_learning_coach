@@ -10,7 +10,7 @@ import type {
   SubmissionListResponse,
   FeedbackResponse,
   PaginationParams,
-} from '../types/api'
+} from '../types/apiTypes'
 
 export class SubmissionsService {
   private static readonly BASE_PATH = '/api/v1/submissions'

@@ -8,7 +8,7 @@ import type {
   SetGoalsResponse,
   UpdateGoalsRequest,
   BaseResponse,
-} from '../types/api'
+} from '../types/apiTypes'
 
 export class GoalsService {
   private static readonly BASE_PATH = '/api/v1/goals'

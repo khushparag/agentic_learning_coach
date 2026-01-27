@@ -12,7 +12,7 @@ import type {
   AwardXPResponse,
   LeaderboardEntry,
   BadgeShowcase,
-} from '../../types/api'
+} from '../../types/apiTypes'
 
 /**
  * Hook to get complete gamification profile for a user

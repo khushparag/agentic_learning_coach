@@ -8,7 +8,7 @@ import type {
   Exercise,
   Submission,
   Achievement
-} from '@/types/api';
+} from '@/types/apiTypes';
 
 // User Profile Factory
 export const mockUserProfile = Factory.define<UserProfile>(() => ({

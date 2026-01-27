@@ -5,7 +5,7 @@
 
 import React from 'react'
 import { Card } from '../ui/Card'
-import type { SharedSolution as ApiSharedSolution } from '../../types/api'
+import type { SharedSolution as ApiSharedSolution } from '../../types/apiTypes'
 
 interface SharedSolutionCardProps {
   solution: ApiSharedSolution

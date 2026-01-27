@@ -10,7 +10,7 @@ import type {
   AwardXPResponse,
   LeaderboardEntry,
   BadgeShowcase,
-} from '../types/api'
+} from '../types/apiTypes'
 
 export class GamificationService {
   private static readonly BASE_PATH = '/gamification'

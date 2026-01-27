@@ -47,7 +47,7 @@ export {
 } from '../lib/queryClient'
 
 // Type definitions
-export type * from '../types/api'
+export type * from '../types/apiTypes'
 
 // Service utilities and helpers
 export const services = {

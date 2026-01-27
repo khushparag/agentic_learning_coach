@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAchievements } from '../../hooks/api/useGamification'
 import { GamificationService } from '../../services/gamificationService'
 import { useAuth } from '../../contexts/AuthContext'
-import type { Achievement } from '../../types/api'
+import type { Achievement } from '../../types/apiTypes'
 
 interface AchievementGalleryProps {
   userId?: string
