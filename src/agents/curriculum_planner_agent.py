@@ -1,15 +1,42 @@
 """
 CurriculumPlannerAgent implementation for the Agentic Learning Coach system.
 
-This agent designs adaptive learning paths including:
-- LLM-powered curriculum generation with progressive difficulty
-- Spaced repetition scheduling
-- Module and task generation
-- Mini-project integration
-- Curriculum adaptation based on performance
+This agent serves as the intelligent architect of personalized learning experiences,
+designing adaptive curricula that balance pedagogical best practices with individual
+learner needs and constraints.
 
-NOTE: This agent uses LLM for intelligent curriculum design when available,
-with template fallbacks for reliability.
+CORE RESPONSIBILITIES:
+- Intelligent curriculum generation using LLM-powered design with template fallbacks
+- Adaptive difficulty progression based on learner performance and feedback
+- Spaced repetition scheduling for optimal knowledge retention
+- Mini-project integration for practical skill application
+- Real-time curriculum adaptation based on learning analytics
+
+CURRICULUM DESIGN PHILOSOPHY:
+The agent follows evidence-based learning principles:
+1. Practice-First Approach: 70% hands-on coding, 30% theoretical concepts
+2. Progressive Difficulty: Gradual skill building with appropriate challenge levels
+3. Spaced Repetition: Systematic review scheduling for long-term retention
+4. Project-Based Learning: Real-world applications to consolidate knowledge
+5. Adaptive Personalization: Dynamic adjustments based on individual progress
+
+LLM INTEGRATION STRATEGY:
+- Primary: Uses LLM for intelligent, context-aware curriculum generation
+- Fallback: Template-based generation ensures system reliability
+- Validation: All LLM outputs are validated for structure and pedagogical soundness
+- Enhancement: LLM responses are enriched with spaced repetition and project integration
+
+ADAPTIVE ALGORITHMS:
+- Performance Analysis: Monitors success rates, attempt patterns, and time metrics
+- Difficulty Adjustment: Automatically modifies challenge levels based on performance
+- Pacing Adaptation: Adjusts timeline and content density for optimal learning
+- Content Personalization: Tailors examples and projects to learner interests
+
+TECHNICAL ARCHITECTURE:
+- Repository Pattern: Clean separation of data persistence concerns
+- Strategy Pattern: Pluggable curriculum generation strategies (LLM vs. template)
+- Template Method: Consistent curriculum structure with flexible content generation
+- Circuit Breaker: Graceful degradation when LLM services are unavailable
 """
 import json
 import math
@@ -34,13 +61,40 @@ logger = logging.getLogger(__name__)
 
 class CurriculumPlannerAgent(BaseAgent):
     """
-    Agent responsible for designing and adapting learning curricula.
+    Agent responsible for designing and adapting personalized learning curricula.
     
-    Creates personalized learning paths with progressive difficulty,
-    spaced repetition, and adaptive adjustments based on performance.
+    This agent represents the pedagogical intelligence of the learning system,
+    combining educational theory with adaptive algorithms to create optimal
+    learning experiences for each individual learner.
     
-    Uses LLM for intelligent curriculum design when available,
-    with template fallbacks for reliability.
+    CURRICULUM GENERATION CAPABILITIES:
+    - LLM-Powered Design: Uses advanced language models for intelligent curriculum creation
+    - Template Fallbacks: Ensures reliability with pre-designed curriculum templates
+    - Dynamic Adaptation: Real-time adjustments based on learner performance
+    - Multi-Domain Support: Handles diverse programming languages and technologies
+    - Skill-Level Awareness: Tailors content complexity to learner competency
+    
+    PEDAGOGICAL FEATURES:
+    - Spaced Repetition: Implements scientifically-proven retention scheduling
+    - Progressive Difficulty: Gradual skill building with appropriate challenge curves
+    - Project Integration: Real-world applications to consolidate theoretical knowledge
+    - Practice-First Design: Emphasizes hands-on coding over passive consumption
+    - Adaptive Pacing: Adjusts timeline based on individual learning velocity
+    
+    ADAPTATION ALGORITHMS:
+    The agent continuously monitors learner performance and applies intelligent
+    adaptations:
+    - Difficulty Reduction: When consecutive failures indicate struggle
+    - Challenge Enhancement: When high performance suggests readiness for advancement
+    - Pacing Adjustment: When time metrics indicate need for schedule modification
+    - Content Simplification: When cognitive load appears excessive
+    - Practice Reinforcement: When concept mastery requires additional exercises
+    
+    INTEGRATION ARCHITECTURE:
+    - ProfileAgent: Receives learner goals, constraints, and skill assessments
+    - ProgressTracker: Provides performance data for adaptation decisions
+    - ExerciseGeneratorAgent: Collaborates on task creation and difficulty calibration
+    - ResourcesAgent: Coordinates content curation and material selection
     """
     
     def __init__(
@@ -50,28 +104,45 @@ class CurriculumPlannerAgent(BaseAgent):
         llm_service: Optional[LLMService] = None
     ):
         """
-        Initialize CurriculumPlannerAgent with required dependencies.
+        Initialize CurriculumPlannerAgent with comprehensive curriculum design capabilities.
         
         Args:
-            curriculum_repository: Repository for curriculum operations
-            user_repository: Repository for user profile operations
+            curriculum_repository: Repository for curriculum persistence and retrieval
+            user_repository: Repository for accessing learner profiles and preferences
             llm_service: Optional LLM service for AI-powered curriculum generation
+            
+        INITIALIZATION STRATEGY:
+        - Curriculum templates provide reliable fallbacks for all skill levels
+        - Spaced repetition intervals follow cognitive science research (1, 3, 7, 14, 30 days)
+        - Difficulty progression parameters ensure appropriate challenge curves
+        - Project templates enable practical skill application across domains
+        
+        DESIGN RATIONALE:
+        - Template-based fallbacks ensure system reliability when LLM is unavailable
+        - Pre-computed spaced repetition intervals optimize long-term retention
+        - Difficulty progression parameters prevent overwhelming or under-challenging learners
+        - Project templates provide structured practical applications for skill consolidation
+        - Repository injection enables testing and flexible data storage backends
         """
         super().__init__(AgentType.CURRICULUM_PLANNER)
         self.curriculum_repository = curriculum_repository
         self.user_repository = user_repository
         self.llm_service = llm_service or create_llm_service()
         
-        # Learning path templates by domain and skill level (fallback)
+        # Learning path templates organized by domain and skill level
+        # Provides reliable fallback when LLM generation fails or is unavailable
         self._curriculum_templates = self._initialize_curriculum_templates()
         
-        # Spaced repetition intervals (in days)
+        # Spaced repetition intervals based on cognitive science research
+        # Optimizes long-term retention through scientifically-proven scheduling
         self._spaced_repetition_intervals = [1, 3, 7, 14, 30]
         
-        # Difficulty progression parameters
+        # Difficulty progression parameters for adaptive challenge management
+        # Ensures appropriate learning curves that maintain engagement without overwhelming
         self._difficulty_progression = self._initialize_difficulty_progression()
         
-        # Mini-project templates (fallback)
+        # Mini-project templates for practical skill application
+        # Provides structured opportunities to consolidate theoretical knowledge
         self._project_templates = self._initialize_project_templates()
     
     def get_supported_intents(self) -> List[str]:
@@ -129,14 +200,46 @@ class CurriculumPlannerAgent(BaseAgent):
     
     async def _create_learning_path(self, context: LearningContext, payload: Dict[str, Any]) -> AgentResult:
         """
-        Create a personalized learning path based on user profile and goals.
+        Create a comprehensive, personalized learning path using intelligent curriculum design.
+        
+        This method orchestrates the entire curriculum creation process, combining
+        learner profile analysis, goal interpretation, constraint consideration,
+        and pedagogical best practices to generate an optimal learning experience.
+        
+        CURRICULUM DESIGN PROCESS:
+        1. Profile Analysis: Extracts skill level, goals, and constraints from user profile
+        2. Goal Validation: Ensures learning objectives are specific and achievable
+        3. Constraint Integration: Adapts curriculum to available time and preferences
+        4. Structure Generation: Creates modular curriculum with progressive difficulty
+        5. Task Creation: Generates specific learning tasks with clear objectives
+        6. Spaced Repetition: Integrates review scheduling for optimal retention
+        7. Project Integration: Adds practical applications to consolidate learning
+        
+        INTELLIGENT FEATURES:
+        - LLM-Powered Generation: Uses AI for context-aware curriculum creation
+        - Template Fallbacks: Ensures reliability with pre-designed structures
+        - Adaptive Difficulty: Calibrates challenge levels to learner competency
+        - Time-Aware Scheduling: Respects learner availability and pacing preferences
+        - Goal-Driven Content: Aligns all activities with stated learning objectives
         
         Args:
-            context: Learning context
-            payload: Contains learning goals, constraints, and preferences
+            context: Learning context with user identification and session tracking
+            payload: Contains learning goals, time constraints, and preferences
+                    - goals: List of specific learning objectives
+                    - time_constraints: Available study time and scheduling preferences
+                    - preferences: Learning style and content preferences
             
         Returns:
-            AgentResult with created learning plan
+            AgentResult containing:
+            - Complete learning plan with modules and tasks
+            - Curriculum summary with key metrics and timeline
+            - Next action recommendations for plan activation
+            
+        DESIGN RATIONALE:
+        - Comprehensive profile integration ensures personalized content
+        - Modular structure enables flexible adaptation and modification
+        - Progressive difficulty maintains engagement while building competency
+        - Clear next actions guide learners toward immediate engagement
         """
         # Get user profile
         profile = await self.user_repository.get_user_profile(context.user_id)
@@ -621,19 +724,58 @@ class CurriculumPlannerAgent(BaseAgent):
         preferences: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Design the overall curriculum structure based on goals and constraints.
+        Design comprehensive curriculum structure using intelligent generation strategies.
         
-        Uses LLM for intelligent curriculum design when available,
-        with template fallbacks for reliability.
+        This method serves as the core curriculum architecture engine, orchestrating
+        the creation of personalized learning paths that balance pedagogical effectiveness
+        with individual learner needs and constraints.
+        
+        GENERATION STRATEGY HIERARCHY:
+        1. LLM-Powered Generation: Primary approach using AI for context-aware design
+        2. Template-Based Fallback: Reliable backup using pre-designed structures
+        3. Dynamic Template Creation: Generates templates for unknown technologies
+        4. Validation & Enhancement: Ensures pedagogical soundness and completeness
+        
+        CURRICULUM DESIGN PRINCIPLES:
+        - Progressive Difficulty: Gradual skill building with appropriate challenge curves
+        - Practice-First Emphasis: 70% hands-on coding, 30% theoretical concepts
+        - Spaced Repetition Integration: Built-in review scheduling for retention
+        - Project-Based Consolidation: Real-world applications every 2-3 modules
+        - Adaptive Time Management: Respects learner availability and pacing preferences
+        
+        LLM INTEGRATION FEATURES:
+        - Context-Aware Generation: Considers learner background and goals
+        - Domain Expertise: Leverages AI knowledge of best practices and industry standards
+        - Personalization: Adapts content style and examples to learner preferences
+        - Quality Validation: Ensures generated content meets pedagogical standards
+        
+        FALLBACK MECHANISMS:
+        - Template Library: Pre-designed curricula for common learning paths
+        - Dynamic Generation: Creates structures for any technology domain
+        - Hybrid Approach: Combines templates with intelligent customization
+        - Graceful Degradation: Maintains functionality even with limited resources
         
         Args:
-            goals: Learning goals
-            skill_level: Current skill level
-            time_constraints: Available time constraints
-            preferences: Learning preferences
+            goals: Specific learning objectives and target technologies
+            skill_level: Current competency level for difficulty calibration
+            time_constraints: Available study time and scheduling preferences
+            preferences: Learning style, content format, and engagement preferences
             
         Returns:
-            Dictionary with curriculum structure
+            Dictionary containing complete curriculum structure:
+            - title: Descriptive curriculum name
+            - description: Overview of learning objectives and outcomes
+            - modules: Ordered list of learning modules with tasks
+            - total_days: Estimated completion timeline
+            - practice_ratio: Balance of hands-on vs. theoretical content
+            - spaced_repetition: Integrated review scheduling
+            
+        DESIGN RATIONALE:
+        - Multi-strategy approach ensures reliability and quality
+        - LLM integration provides intelligent, context-aware generation
+        - Template fallbacks guarantee system availability
+        - Validation ensures pedagogical soundness regardless of generation method
+        - Comprehensive structure enables flexible adaptation and modification
         """
         # Determine primary domain from goals
         primary_domain = self._determine_primary_domain(goals)
@@ -1243,7 +1385,63 @@ Make the curriculum specific to {primary_domain} with real-world, practical exam
         performance_data: Dict[str, Any], 
         trigger: str
     ) -> List[Dict[str, Any]]:
-        """Analyze performance data and determine necessary adaptations."""
+        """
+        Analyze learner performance data and determine intelligent curriculum adaptations.
+        
+        This method implements sophisticated performance analysis algorithms that
+        identify learning patterns, detect struggle points, and recommend specific
+        adaptations to optimize the learning experience.
+        
+        PERFORMANCE ANALYSIS DIMENSIONS:
+        - Success Rate: Overall completion and correctness metrics
+        - Attempt Patterns: Number of tries needed for task completion
+        - Time Efficiency: Duration spent on tasks relative to estimates
+        - Consecutive Failures: Patterns indicating conceptual difficulties
+        - Help-Seeking Behavior: Frequency of hint requests and resource access
+        
+        ADAPTATION ALGORITHMS:
+        1. Difficulty Adjustment: Modifies challenge levels based on performance trends
+        2. Pacing Modification: Adjusts timeline based on learning velocity
+        3. Content Simplification: Reduces cognitive load when overwhelmed
+        4. Practice Reinforcement: Adds exercises when mastery is incomplete
+        5. Challenge Enhancement: Increases difficulty for high performers
+        
+        ADAPTATION TRIGGERS:
+        - Consecutive Failures (≥2): Indicates concept difficulty, triggers recap tasks
+        - Low Success Rate (<60%): Suggests pacing issues, triggers slower progression
+        - High Performance (>90%): Indicates readiness for advancement
+        - Excessive Time (>2x estimate): Suggests task complexity issues
+        - Pattern Recognition: Identifies systematic learning difficulties
+        
+        INTELLIGENT FEATURES:
+        - Context-Aware Analysis: Considers learner background and goals
+        - Predictive Modeling: Anticipates future difficulties based on patterns
+        - Personalized Recommendations: Tailors adaptations to individual learning styles
+        - Minimal Disruption: Applies changes that maintain learning momentum
+        
+        Args:
+            plan: Current learning plan being analyzed
+            performance_data: Comprehensive performance metrics including:
+                - success_rate: Percentage of tasks completed successfully
+                - average_attempts: Mean number of attempts per task
+                - time_per_task_minutes: Average time spent on tasks
+                - consecutive_failures: Current streak of failed attempts
+                - help_requests: Frequency of hint and resource usage
+            trigger: Reason for adaptation analysis (manual, automatic, scheduled)
+            
+        Returns:
+            List of adaptation recommendations, each containing:
+            - type: Category of adaptation (difficulty, pacing, content)
+            - reason: Specific performance pattern that triggered adaptation
+            - adjustment: Quantitative change parameters
+            - additional_actions: Supplementary modifications (recap, stretch tasks)
+            
+        DESIGN RATIONALE:
+        - Multi-dimensional analysis provides comprehensive performance understanding
+        - Rule-based adaptations ensure predictable and explainable modifications
+        - Graduated responses prevent over-correction and maintain stability
+        - Context preservation maintains learning continuity during adaptations
+        """
         adaptations = []
         
         # Extract performance metrics

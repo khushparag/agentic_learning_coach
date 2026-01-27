@@ -196,4 +196,24 @@ Thumbs.db
 runner-service/
 .env.local
 .env.production
-.env.example
+
+# Node.js / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Frontend build outputs
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/out/
+
+# Frontend environment files
+frontend/.env.local
+frontend/.env.production.local
+frontend/.env.development.local
+
+# Screenshots directory (generated content)
+screenshots/

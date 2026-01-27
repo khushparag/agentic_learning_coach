@@ -1,5 +1,43 @@
 """
-ReviewerAgent implementation for code evaluation and feedback generation.
+ReviewerAgent implementation for comprehensive code evaluation and feedback generation.
+
+This agent serves as the intelligent code assessment engine of the learning system,
+providing detailed analysis, constructive feedback, and actionable guidance to help
+learners improve their programming skills through iterative practice.
+
+CORE RESPONSIBILITIES:
+- Secure code execution with comprehensive test case validation
+- Multi-dimensional code quality analysis (readability, structure, best practices)
+- Intelligent feedback generation tailored to learner skill level
+- Performance tracking and pattern recognition for adaptive learning
+- Comparative analysis across multiple submissions for progress tracking
+
+CODE EVALUATION METHODOLOGY:
+The agent employs a holistic assessment approach combining:
+1. Functional Correctness: Automated test execution with detailed result analysis
+2. Code Quality Assessment: Multi-criteria evaluation of readability and maintainability
+3. Best Practices Adherence: Language-specific convention and pattern analysis
+4. Performance Considerations: Complexity analysis and optimization opportunities
+5. Educational Value: Feedback calibrated to learner skill level and learning objectives
+
+FEEDBACK GENERATION STRATEGY:
+- Constructive Approach: Emphasizes improvement opportunities over criticism
+- Skill-Level Adaptation: Adjusts complexity and depth based on learner competency
+- Actionable Guidance: Provides specific, implementable suggestions for improvement
+- Positive Reinforcement: Highlights successful aspects to build confidence
+- Progressive Development: Guides learners toward increasingly sophisticated practices
+
+QUALITY ANALYSIS FRAMEWORK:
+- Readability (25%): Code clarity, naming conventions, documentation quality
+- Correctness (40%): Test results, edge case handling, logical accuracy
+- Efficiency (20%): Time/space complexity, optimization opportunities
+- Best Practices (15%): Language conventions, error handling, design patterns
+
+SECURITY & SAFETY:
+- Sandboxed Execution: All code runs in isolated, secure environments
+- Resource Limits: Prevents infinite loops and excessive resource consumption
+- Input Validation: Comprehensive sanitization of all user-submitted code
+- Error Containment: Graceful handling of malicious or malformed submissions
 """
 import logging
 from typing import Dict, List, Optional, Any
@@ -26,19 +64,75 @@ logger = logging.getLogger(__name__)
 
 class ReviewerAgent(BaseAgent):
     """
-    Agent responsible for evaluating code submissions and providing detailed feedback.
+    Agent responsible for comprehensive code evaluation and intelligent feedback generation.
     
-    Capabilities:
-    - Execute and test code submissions
-    - Generate specific, actionable feedback
-    - Evaluate code quality and correctness
-    - Track submission attempts and patterns
-    - Provide improvement suggestions
+    This agent represents the pedagogical assessment intelligence of the learning system,
+    combining automated testing, quality analysis, and educational psychology to provide
+    meaningful, actionable feedback that accelerates learning and skill development.
+    
+    EVALUATION CAPABILITIES:
+    - Secure Code Execution: Sandboxed environment with comprehensive safety measures
+    - Multi-Language Support: Handles Python, JavaScript, Java, and other languages
+    - Comprehensive Testing: Automated test case execution with detailed result analysis
+    - Quality Assessment: Multi-dimensional code quality evaluation framework
+    - Adaptive Feedback: Skill-level appropriate guidance and suggestions
+    
+    FEEDBACK GENERATION FEATURES:
+    - Constructive Criticism: Focuses on improvement opportunities rather than failures
+    - Specific Guidance: Provides actionable suggestions with clear implementation steps
+    - Positive Reinforcement: Highlights successful aspects to build learner confidence
+    - Progressive Complexity: Adapts feedback depth to learner skill level
+    - Educational Context: Connects feedback to broader learning objectives
+    
+    QUALITY ANALYSIS DIMENSIONS:
+    The agent evaluates code across multiple criteria with weighted importance:
+    - Correctness (40%): Functional accuracy and test case compliance
+    - Readability (25%): Code clarity, naming, and documentation quality
+    - Efficiency (20%): Performance characteristics and optimization opportunities
+    - Best Practices (15%): Language conventions and professional standards
+    
+    ADAPTIVE LEARNING INTEGRATION:
+    - Performance Tracking: Monitors submission patterns and improvement trends
+    - Difficulty Calibration: Provides feedback appropriate to current skill level
+    - Learning Path Guidance: Suggests next steps based on demonstrated competency
+    - Struggle Detection: Identifies areas requiring additional practice or explanation
+    
+    SECURITY & RELIABILITY:
+    - Sandboxed Execution: All code runs in isolated, secure environments
+    - Resource Management: Prevents infinite loops and resource exhaustion
+    - Error Resilience: Graceful handling of malformed or malicious submissions
+    - Fallback Mechanisms: Maintains functionality during service disruptions
     """
     
     def __init__(self, 
                  code_execution_service: ICodeExecutionService,
                  submission_repository: ISubmissionRepository):
+        """
+        Initialize ReviewerAgent with comprehensive code evaluation capabilities.
+        
+        Args:
+            code_execution_service: Secure code execution service for running and testing submissions
+            submission_repository: Repository for persisting and retrieving submission data
+            
+        INITIALIZATION STRATEGY:
+        - Quality criteria define weighted evaluation framework for comprehensive assessment
+        - Feedback templates provide consistent, encouraging messaging across different scenarios
+        - Supported intents cover the full spectrum of code evaluation and analysis needs
+        - Service dependencies enable secure execution and persistent tracking
+        
+        QUALITY ASSESSMENT FRAMEWORK:
+        The agent uses a multi-dimensional quality model that balances:
+        - Functional correctness (highest weight) - does the code work as intended?
+        - Code readability (high weight) - can others understand and maintain the code?
+        - Performance efficiency (medium weight) - does the code use resources appropriately?
+        - Best practices adherence (lower weight) - does the code follow conventions?
+        
+        DESIGN RATIONALE:
+        - Weighted quality criteria ensure balanced assessment across multiple dimensions
+        - Template-based feedback provides consistency while allowing personalization
+        - Repository injection enables testing and flexible data persistence
+        - Service abstraction allows for different execution environments and security models
+        """
         super().__init__(AgentType.REVIEWER)
         self.code_execution_service = code_execution_service
         self.submission_repository = submission_repository
@@ -51,10 +145,12 @@ class ReviewerAgent(BaseAgent):
             'validate_solution'
         ]
         
-        # Feedback templates for different scenarios
+        # Feedback templates for consistent, encouraging messaging across scenarios
+        # Provides structured responses that maintain positive learning environment
         self.feedback_templates = self._initialize_feedback_templates()
         
-        # Code quality criteria
+        # Multi-dimensional code quality assessment framework
+        # Balances functional correctness with maintainability and professional standards
         self.quality_criteria = {
             'readability': {
                 'weight': 0.25,
@@ -103,7 +199,55 @@ class ReviewerAgent(BaseAgent):
             raise AgentProcessingError(f"Failed to process {intent}: {str(e)}")
     
     async def _evaluate_submission(self, context: LearningContext, payload: Dict[str, Any]) -> AgentResult:
-        """Evaluate a complete code submission."""
+        """
+        Conduct comprehensive evaluation of a code submission with detailed feedback generation.
+        
+        This method orchestrates the complete assessment process, combining automated testing,
+        quality analysis, and intelligent feedback generation to provide learners with
+        actionable insights for improvement.
+        
+        EVALUATION PROCESS:
+        1. Input Validation: Ensures submission completeness and format correctness
+        2. Secure Execution: Runs code in sandboxed environment with safety constraints
+        3. Test Case Validation: Executes comprehensive test suite with detailed result analysis
+        4. Quality Assessment: Multi-dimensional code quality evaluation
+        5. Feedback Generation: Creates personalized, constructive feedback
+        6. Progress Tracking: Records submission for learning analytics
+        7. Next Action Determination: Suggests appropriate follow-up activities
+        
+        SECURITY MEASURES:
+        - Sandboxed execution prevents system access and resource abuse
+        - Input sanitization prevents code injection and malicious submissions
+        - Resource limits prevent infinite loops and memory exhaustion
+        - Error containment ensures system stability during evaluation failures
+        
+        FEEDBACK INTELLIGENCE:
+        - Skill-Level Adaptation: Adjusts feedback complexity to learner competency
+        - Constructive Approach: Emphasizes improvement opportunities over failures
+        - Specific Guidance: Provides actionable suggestions with implementation details
+        - Positive Reinforcement: Highlights successful aspects to build confidence
+        - Educational Context: Connects feedback to broader learning objectives
+        
+        Args:
+            context: Learning context with user identification and session tracking
+            payload: Contains submission and exercise data:
+                    - submission: Code content, language, and metadata
+                    - exercise: Test cases, requirements, and evaluation criteria
+            
+        Returns:
+            AgentResult containing:
+            - Complete evaluation with pass/fail status and detailed scoring
+            - Execution results with test case outcomes and performance metrics
+            - Quality analysis across multiple dimensions
+            - Personalized feedback with specific improvement suggestions
+            - Next action recommendations based on performance
+            
+        DESIGN RATIONALE:
+        - Comprehensive evaluation provides complete picture of code quality
+        - Secure execution ensures system safety while enabling realistic testing
+        - Detailed feedback accelerates learning through specific, actionable guidance
+        - Progress tracking enables adaptive learning path adjustments
+        """
         try:
             # Extract submission data
             submission_data = payload.get('submission')

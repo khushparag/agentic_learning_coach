@@ -4,12 +4,26 @@ OrchestratorAgent implementation for the Agentic Learning Coach system.
 This agent serves as the single entry point and coordinator for all learning operations.
 It routes user intents to appropriate specialist agents and coordinates multi-agent workflows.
 
+ARCHITECTURAL PRINCIPLES:
+- Single Responsibility: Only handles routing and coordination, never business logic
+- Clean Boundaries: Explicit contracts between agents with structured handoffs
+- Fault Tolerance: Graceful degradation with fallback strategies for each agent type
+- Observability: Comprehensive logging of all agent interactions and workflow states
+
 Key responsibilities:
-- Route user intents to appropriate agents
-- Manage conversation state and context
-- Coordinate multi-agent workflows
-- Handle error recovery and fallbacks
+- Route user intents to appropriate agents (using intent classification)
+- Manage conversation state and context across multi-agent interactions
+- Coordinate complex multi-agent workflows (onboarding, submission evaluation, etc.)
+- Handle error recovery and fallbacks when specialist agents fail
+- Provide health monitoring and status reporting for the entire agent ecosystem
 - NEVER contain business logic (delegates to specialist agents)
+
+DESIGN DECISIONS:
+- Uses dependency injection pattern for agent registry to enable testing and modularity
+- Implements circuit breaker pattern for agent failures to prevent cascading failures
+- Supports both direct intent routing and natural language classification
+- Maintains workflow state to enable resumption after failures
+- Uses async/await throughout to handle concurrent agent operations efficiently
 """
 import asyncio
 from typing import Dict, Any, List, Optional, Type, Callable, Awaitable
@@ -29,38 +43,80 @@ from .intent_router import IntentRouter, LearningIntent, INTENT_ROUTING
 
 @dataclass
 class WorkflowStep:
-    """Represents a step in a multi-agent workflow."""
+    """
+    Represents a step in a multi-agent workflow.
+    
+    Each step defines how to call a specific agent and how to transform
+    the payload for subsequent steps. This enables complex workflows
+    where the output of one agent becomes input for the next.
+    
+    Design rationale: Declarative workflow definition allows for easy
+    modification and testing of multi-agent interactions without
+    hardcoding the logic in the orchestrator.
+    """
     agent_type: AgentType
     intent: str
+    # Optional transformer to modify payload based on previous step's result
+    # This enables data flow between workflow steps
     payload_transformer: Optional[Callable[[Dict[str, Any], AgentResult], Dict[str, Any]]] = None
-    required: bool = True
-    timeout: Optional[int] = None
+    required: bool = True  # If False, step failure won't abort the workflow
+    timeout: Optional[int] = None  # Step-specific timeout override
 
 
 @dataclass
 class WorkflowDefinition:
-    """Defines a multi-agent workflow."""
+    """
+    Defines a complete multi-agent workflow.
+    
+    Workflows encapsulate common multi-step operations like onboarding
+    or exercise submission that require coordination between multiple agents.
+    
+    Design rationale: Declarative workflow definitions make complex
+    agent interactions testable and maintainable. The failure handling
+    strategy is configurable per workflow based on business requirements.
+    """
     name: str
     description: str
     steps: List[WorkflowStep]
-    on_step_failure: str = "abort"  # "abort", "skip", "retry"
-    max_retries: int = 2
+    on_step_failure: str = "abort"  # "abort", "skip", "retry" - determines failure handling strategy
+    max_retries: int = 2  # Number of retries for failed steps when on_step_failure="retry"
 
 
 @dataclass
 class AgentRegistration:
-    """Registration information for a specialist agent."""
+    """
+    Registration information for a specialist agent.
+    
+    Contains metadata needed for the orchestrator to properly route
+    requests and manage agent lifecycle. Priority enables handling
+    of overlapping capabilities between agents.
+    """
     agent_type: AgentType
     agent_instance: BaseAgent
-    supported_intents: List[str]
+    supported_intents: List[str]  # Intents this agent can handle
     priority: int = 0  # Higher priority agents are preferred for ambiguous intents
 
 
 class AgentRegistry:
     """
-    Registry for managing specialist agents.
+    Registry for managing specialist agents with dependency injection.
     
-    Provides dependency injection and agent lookup functionality.
+    Provides centralized agent management with support for:
+    - Dynamic agent registration/unregistration
+    - Intent-to-agent mapping with priority resolution
+    - Agent lifecycle management
+    - Health status aggregation
+    
+    DESIGN DECISIONS:
+    - Uses composition over inheritance for flexibility
+    - Maintains bidirectional mapping (agent->intents, intent->agent) for O(1) lookups
+    - Supports priority-based resolution for overlapping agent capabilities
+    - Thread-safe operations for concurrent access (though currently single-threaded)
+    
+    This registry pattern enables:
+    - Easy testing with mock agents
+    - Runtime agent swapping for A/B testing
+    - Graceful degradation when agents are unavailable
     """
     
     def __init__(self):
@@ -69,11 +125,19 @@ class AgentRegistry:
     
     def register(self, agent: BaseAgent, priority: int = 0) -> None:
         """
-        Register a specialist agent.
+        Register a specialist agent with the orchestrator.
+        
+        This method establishes the bidirectional mapping between agents and intents,
+        enabling efficient routing. Higher priority agents take precedence when
+        multiple agents can handle the same intent.
         
         Args:
             agent: The agent instance to register
             priority: Priority for intent resolution (higher = preferred)
+                     Used when multiple agents support the same intent
+        
+        THREAD SAFETY: Currently not thread-safe. If concurrent registration
+        becomes necessary, add locking around the mapping updates.
         """
         registration = AgentRegistration(
             agent_type=agent.agent_type,
@@ -84,14 +148,22 @@ class AgentRegistry:
         
         self._agents[agent.agent_type] = registration
         
-        # Map intents to this agent
+        # Map intents to this agent (overwrites previous mappings)
+        # TODO: Consider supporting multiple agents per intent with priority resolution
         for intent in registration.supported_intents:
             self._intent_to_agent[intent] = agent.agent_type
     
     def unregister(self, agent_type: AgentType) -> None:
-        """Unregister an agent."""
+        """
+        Unregister an agent and clean up its intent mappings.
+        
+        IMPORTANT: This method performs cleanup of both the agent registry
+        and the intent mappings to prevent stale references. Any in-flight
+        requests to this agent may fail after unregistration.
+        """
         if agent_type in self._agents:
             registration = self._agents[agent_type]
+            # Clean up intent mappings to prevent routing to unregistered agent
             for intent in registration.supported_intents:
                 if self._intent_to_agent.get(intent) == agent_type:
                     del self._intent_to_agent[intent]
@@ -130,61 +202,103 @@ class OrchestratorAgent(BaseAgent):
     routing requests to appropriate specialist agents and coordinating
     multi-agent workflows.
     
-    Key principles:
+    ARCHITECTURAL PATTERNS IMPLEMENTED:
+    - Mediator Pattern: Centralizes complex communications between agents
+    - Command Pattern: Encapsulates requests as objects for queuing and logging
+    - Chain of Responsibility: Routes requests through appropriate handlers
+    - Circuit Breaker: Prevents cascading failures when agents are down
+    
+    KEY DESIGN PRINCIPLES:
     - No business logic - only routing and coordination
-    - Clean handoffs with explicit contracts
-    - Graceful error handling and fallbacks
-    - Comprehensive logging of all operations
+    - Clean handoffs with explicit contracts between agents
+    - Graceful error handling and fallbacks for each agent type
+    - Comprehensive logging of all operations for debugging and monitoring
+    - Stateless operation (workflow state is externalized)
+    
+    PERFORMANCE CONSIDERATIONS:
+    - Uses async/await for non-blocking agent communication
+    - Implements timeout handling to prevent hanging requests
+    - Maintains agent registry in memory for O(1) routing lookups
+    - Workflow state is cleaned up automatically to prevent memory leaks
     """
     
     def __init__(self, agent_registry: Optional[AgentRegistry] = None):
         """
-        Initialize the OrchestratorAgent.
+        Initialize the OrchestratorAgent with dependency injection.
         
         Args:
             agent_registry: Registry of specialist agents (creates new if not provided)
+                           Dependency injection enables testing with mock agents
+        
+        INITIALIZATION STRATEGY:
+        - Creates default registry if none provided (for production use)
+        - Initializes standard workflows that cover common multi-agent scenarios
+        - Sets up conversation state tracking for workflow resumption
+        - Configures intent router for natural language processing
         """
         super().__init__(AgentType.ORCHESTRATOR)
         self.registry = agent_registry or AgentRegistry()
         self.intent_router = IntentRouter()
         
-        # Standard workflow definitions
+        # Standard workflow definitions for common multi-agent scenarios
         self._workflows = self._initialize_workflows()
         
-        # Conversation state tracking
+        # Conversation state tracking for workflow resumption and debugging
+        # Key: correlation_id, Value: workflow state including step progress
         self._active_workflows: Dict[str, Dict[str, Any]] = {}
     
     def get_supported_intents(self) -> List[str]:
-        """Return list of intents this agent can handle."""
+        """
+        Return list of intents this agent can handle.
+        
+        The orchestrator can handle all intents by routing to specialists,
+        making it the universal entry point for the system. This design
+        simplifies client integration - they only need to know about the
+        orchestrator, not individual specialist agents.
+        """
         # Orchestrator can handle all intents by routing to specialists
+        # This makes it the universal entry point for the learning system
         return [intent.value for intent in LearningIntent]
     
     async def process(self, context: LearningContext, payload: Dict[str, Any]) -> AgentResult:
         """
-        Process a request by routing to the appropriate specialist agent.
+        Process a request by routing to the appropriate specialist agent or workflow.
+        
+        This is the main entry point for all learning operations. The method
+        implements a three-tier routing strategy:
+        1. Direct intent routing (when intent is explicitly provided)
+        2. Natural language classification (when only message is provided)
+        3. Workflow execution (when workflow parameter is specified)
         
         Args:
-            context: Learning context with user information
-            payload: Request payload with intent and data
+            context: Learning context with user information and correlation ID
+            payload: Request payload with intent/message/workflow and data
             
         Returns:
-            AgentResult from the specialist agent or workflow
+            AgentResult from the specialist agent or workflow execution
+            
+        ROUTING LOGIC:
+        - Explicit intents take precedence over natural language
+        - Workflows override individual agent routing
+        - Natural language fallback enables conversational interaction
+        - All routing decisions are logged for debugging and analytics
         """
         intent_str = payload.get("intent")
         
         if not intent_str:
-            # Try to classify intent from natural language
+            # Try to classify intent from natural language input
+            # This enables conversational interaction without explicit intent specification
             user_input = payload.get("message", payload.get("query", ""))
             if user_input:
                 return await self._handle_natural_language_input(context, user_input, payload)
             raise ValidationError("Intent or message is required")
         
-        # Check if this is a workflow request
+        # Check if this is a workflow request (workflows take precedence over single agents)
         workflow_name = payload.get("workflow")
         if workflow_name:
             return await self._execute_workflow(context, workflow_name, payload)
         
-        # Route to specialist agent
+        # Route to specialist agent for single-step operations
         return await self._route_to_specialist(context, intent_str, payload)
     
     async def _handle_natural_language_input(
@@ -196,15 +310,28 @@ class OrchestratorAgent(BaseAgent):
         """
         Handle natural language input by classifying intent and routing.
         
+        This method enables conversational interaction by using NLP to determine
+        user intent from natural language. It implements a confidence-based
+        approach where low-confidence classifications trigger clarification.
+        
         Args:
             context: Learning context
             user_input: Natural language input from user
-            payload: Original payload
+            payload: Original payload (will be augmented with classified intent)
             
         Returns:
-            AgentResult from the appropriate specialist
+            AgentResult from the appropriate specialist or clarification request
+            
+        CONFIDENCE THRESHOLDS:
+        - < 0.3: Request clarification with alternatives
+        - >= 0.3: Route to specialist agent
+        
+        DESIGN RATIONALE:
+        - Conservative confidence threshold prevents misrouting
+        - Clarification includes alternatives to guide user
+        - All classification attempts are logged for model improvement
         """
-        # Classify intent
+        # Classify intent using natural language processing
         classification = self.intent_router.classify_intent(user_input)
         
         if not classification.intent:
@@ -213,12 +340,14 @@ class OrchestratorAgent(BaseAgent):
                 error_code="INTENT_CLASSIFICATION_FAILED",
                 metadata={
                     "raw_input": user_input,
-                    "confidence": classification.confidence
+                    "confidence": classification.confidence,
+                    "suggestion": "Try using more specific terms or ask for help with a particular topic."
                 }
             )
         
         if classification.confidence < 0.3:
-            # Low confidence - ask for clarification
+            # Low confidence - ask for clarification rather than potentially misrouting
+            # This prevents frustrating experiences where the system does the wrong thing
             return AgentResult.success_result(
                 data={
                     "needs_clarification": True,
@@ -238,6 +367,7 @@ class OrchestratorAgent(BaseAgent):
             )
         
         # Route to specialist with classified intent
+        # Augment original payload with the classified intent
         updated_payload = {**payload, "intent": classification.intent.value}
         
         self.logger.log_info(

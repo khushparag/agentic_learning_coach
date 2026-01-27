@@ -1,8 +1,44 @@
 """
-ExerciseGeneratorAgent implementation for creating targeted practice exercises.
+ExerciseGeneratorAgent implementation for intelligent practice exercise creation.
 
-This agent uses LLM integration for AI-powered exercise generation when available,
-with intelligent fallback to template-based generation.
+This agent serves as the pedagogical content creation engine of the learning system,
+generating targeted, adaptive exercises that provide optimal practice opportunities
+for skill development and knowledge consolidation.
+
+CORE RESPONSIBILITIES:
+- Intelligent exercise generation using LLM-powered content creation with template fallbacks
+- Adaptive difficulty calibration based on learner performance and skill progression
+- Comprehensive test case generation for automated assessment and validation
+- Contextual hint generation to provide scaffolded learning support
+- Specialized exercise types (stretch, recap, project) for diverse learning needs
+
+EXERCISE GENERATION STRATEGIES:
+The agent employs a multi-layered approach to content creation:
+1. LLM-Powered Generation: Uses advanced language models for context-aware exercise creation
+2. Template-Based Fallbacks: Ensures reliability with pre-designed exercise structures
+3. Adaptive Customization: Tailors content complexity to individual learner needs
+4. Real-World Relevance: Creates industry-relevant scenarios and practical applications
+5. Progressive Difficulty: Implements scientifically-based challenge progression
+
+ADAPTIVE DIFFICULTY SYSTEM:
+- Performance Analysis: Monitors completion time, attempt patterns, and success rates
+- Dynamic Adjustment: Automatically increases or decreases challenge levels
+- Stretch Exercises: Provides advanced challenges for high-performing learners
+- Recap Exercises: Offers reinforcement opportunities for struggling concepts
+- Contextual Adaptation: Considers learner goals, constraints, and preferences
+
+LLM INTEGRATION ARCHITECTURE:
+- Primary Generation: Leverages AI for creative, contextual exercise creation
+- Quality Validation: Ensures generated content meets pedagogical standards
+- Fallback Mechanisms: Maintains functionality when LLM services are unavailable
+- Template Enhancement: Combines AI creativity with structured educational design
+
+EXERCISE TYPES & SPECIALIZATIONS:
+- Coding Exercises: Hands-on programming challenges with automated testing
+- Quiz Exercises: Knowledge assessment with multiple choice and open-ended questions
+- Project Exercises: Comprehensive applications integrating multiple concepts
+- Stretch Challenges: Advanced problems for accelerated learners
+- Recap Reviews: Reinforcement exercises for concept consolidation
 """
 import logging
 import json
@@ -25,14 +61,45 @@ logger = logging.getLogger(__name__)
 
 class ExerciseGeneratorAgent(BaseAgent):
     """
-    Agent responsible for generating targeted coding exercises and practice opportunities.
+    Agent responsible for intelligent generation of targeted coding exercises and practice opportunities.
     
-    Capabilities:
-    - Generate exercises based on learning objectives and difficulty
-    - Create test cases for coding exercises
-    - Generate hints and scaffolding
-    - Adapt exercise difficulty based on learner performance
-    - Create realistic, industry-relevant scenarios
+    This agent represents the creative pedagogical intelligence of the learning system,
+    combining educational theory, adaptive algorithms, and AI-powered content generation
+    to create optimal practice experiences for individual learners.
+    
+    EXERCISE GENERATION CAPABILITIES:
+    - LLM-Powered Creation: Uses advanced language models for context-aware exercise generation
+    - Multi-Language Support: Handles Python, JavaScript, Java, and other programming languages
+    - Adaptive Difficulty: Dynamically adjusts challenge levels based on learner performance
+    - Comprehensive Testing: Generates thorough test cases for automated assessment
+    - Scaffolded Learning: Provides progressive hint systems for guided problem-solving
+    
+    SPECIALIZED EXERCISE TYPES:
+    - Standard Exercises: Core practice opportunities aligned with learning objectives
+    - Stretch Challenges: Advanced problems for high-performing learners
+    - Recap Reviews: Reinforcement exercises for concept consolidation
+    - Project Exercises: Comprehensive applications integrating multiple concepts
+    - Adaptive Variants: Dynamically modified exercises based on performance patterns
+    
+    DIFFICULTY PROGRESSION SYSTEM:
+    The agent implements a sophisticated difficulty management system:
+    - Performance Monitoring: Tracks completion time, attempt patterns, success rates
+    - Adaptive Calibration: Automatically adjusts challenge levels based on learner data
+    - Progressive Complexity: Ensures appropriate skill building without overwhelming
+    - Contextual Adaptation: Considers learner goals, constraints, and preferences
+    
+    CONTENT QUALITY ASSURANCE:
+    - Educational Alignment: Ensures exercises match stated learning objectives
+    - Real-World Relevance: Creates industry-relevant scenarios and applications
+    - Comprehensive Testing: Generates thorough test cases for reliable assessment
+    - Accessibility: Adapts content presentation to diverse learning styles
+    - Continuous Improvement: Learns from learner interactions to enhance future content
+    
+    INTEGRATION ARCHITECTURE:
+    - CurriculumPlannerAgent: Receives learning objectives and skill level requirements
+    - ReviewerAgent: Collaborates on assessment criteria and feedback generation
+    - ProgressTracker: Provides performance data for adaptive difficulty adjustments
+    - ResourcesAgent: Coordinates with content curation for supplementary materials
     """
     
     def __init__(self, 
