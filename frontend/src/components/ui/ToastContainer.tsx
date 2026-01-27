@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import Toast, { ToastProps } from './Toast';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { useNotifications } from '../../hooks/useNotifications';
+import type { NotificationType } from '../../types/notifications';
 
 interface ToastContextType {
-  addToast: (toast: Omit<ToastProps, 'id' | 'isVisible' | 'onClose'>) => void;
+  addToast: (toast: { type: 'success' | 'error' | 'warning' | 'info'; title: string; message?: string; duration?: number }) => void;
   removeToast: (id: string) => void;
   success: (title: string, message?: string) => void;
   error: (title: string, message?: string) => void;
@@ -24,56 +25,42 @@ interface ToastProviderProps {
   children: ReactNode;
 }
 
-interface ToastState extends Omit<ToastProps, 'onClose'> {
-  timeoutId?: number;
-}
-
+/**
+ * Simplified ToastProvider for backward compatibility
+ * This wraps the advanced notifications system with a simpler interface
+ */
 export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
-  const [toasts, setToasts] = useState<ToastState[]>([]);
+  const { addNotification, dismissNotification } = useNotifications();
 
-  const removeToast = useCallback((id: string) => {
-    setToasts(prev => {
-      const toast = prev.find(t => t.id === id);
-      if (toast?.timeoutId) {
-        clearTimeout(toast.timeoutId);
-      }
-      return prev.filter(t => t.id !== id);
+  const addToast = (toast: { type: 'success' | 'error' | 'warning' | 'info'; title: string; message?: string; duration?: number }) => {
+    addNotification({
+      type: toast.type as NotificationType,
+      title: toast.title,
+      message: toast.message || '',
+      duration: toast.duration || 5000,
+      closable: true,
     });
-  }, []);
+  };
 
-  const addToast = useCallback((toast: Omit<ToastProps, 'id' | 'isVisible' | 'onClose'>) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const duration = toast.duration || 5000;
-    
-    const timeoutId = window.setTimeout(() => {
-      removeToast(id);
-    }, duration);
+  const removeToast = (id: string) => {
+    dismissNotification(id);
+  };
 
-    const newToast: ToastState = {
-      ...toast,
-      id,
-      isVisible: true,
-      timeoutId,
-    };
-
-    setToasts(prev => [...prev, newToast]);
-  }, [removeToast]);
-
-  const success = useCallback((title: string, message?: string) => {
+  const success = (title: string, message?: string) => {
     addToast({ type: 'success', title, message });
-  }, [addToast]);
+  };
 
-  const error = useCallback((title: string, message?: string) => {
+  const error = (title: string, message?: string) => {
     addToast({ type: 'error', title, message });
-  }, [addToast]);
+  };
 
-  const warning = useCallback((title: string, message?: string) => {
+  const warning = (title: string, message?: string) => {
     addToast({ type: 'warning', title, message });
-  }, [addToast]);
+  };
 
-  const info = useCallback((title: string, message?: string) => {
+  const info = (title: string, message?: string) => {
     addToast({ type: 'info', title, message });
-  }, [addToast]);
+  };
 
   const contextValue: ToastContextType = {
     addToast,
@@ -87,22 +74,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   return (
     <ToastContext.Provider value={contextValue}>
       {children}
-      
-      {/* Toast Container */}
-      <div
-        aria-live="assertive"
-        className="fixed inset-0 flex items-end justify-center px-4 py-6 pointer-events-none sm:p-6 sm:items-start sm:justify-end z-50"
-      >
-        <div className="w-full flex flex-col items-center space-y-4 sm:items-end">
-          {toasts.map((toast) => (
-            <Toast
-              key={toast.id}
-              {...toast}
-              onClose={removeToast}
-            />
-          ))}
-        </div>
-      </div>
+      {/* The actual toast rendering is handled by the notifications system */}
     </ToastContext.Provider>
   );
 };

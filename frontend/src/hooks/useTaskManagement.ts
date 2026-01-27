@@ -9,7 +9,7 @@ import { TasksService } from '../services/tasksService'
 import { useProgressWebSocket } from './useProgressWebSocket'
 import { queryKeys, handleQueryError } from '../lib/queryClient'
 import type { TodayTask } from '../types/dashboard'
-import type { TaskSummaryResponse } from '../types/api'
+import type { TaskSummaryResponse } from '../types/apiTypes'
 
 // Domain interfaces following SOLID principles
 interface TaskFilter {

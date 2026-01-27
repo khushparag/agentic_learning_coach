@@ -1,6 +1,6 @@
 import api from './api'
 import { LearningPath, LearningModule, LearningTask, ProgressStats, LearningPathVisualization, LearningResource, TaskSubmission } from '../types/learning-path'
-import { CurriculumResponse, ModuleResponse, TaskResponse } from '../types/api'
+import { CurriculumResponse, ModuleResponse, TaskResponse } from '../types/apiTypes'
 
 // Technology-specific module templates for generating dynamic learning paths
 interface TaskTemplate {

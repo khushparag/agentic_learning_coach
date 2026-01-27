@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { SocialService } from '../services/socialService'
 import { useWebSocket } from './useWebSocket'
 import { useAuth } from '../contexts/AuthContext'
-import type { PeerChallenge } from '../types/api'
+import type { PeerChallenge } from '../types/apiTypes'
 
 interface CompetitionSession {
   challengeId: string

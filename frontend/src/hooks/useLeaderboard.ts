@@ -9,7 +9,7 @@ import { GamificationService } from '../services/gamificationService'
 import { SocialService } from '../services/socialService'
 import { useWebSocket } from './useWebSocket'
 import { useAuth } from '../contexts/AuthContext'
-import type { LeaderboardEntry, PeerChallenge } from '../types/api'
+import type { LeaderboardEntry, PeerChallenge } from '../types/apiTypes'
 
 interface UseLeaderboardOptions {
   timeframe?: 'daily' | 'weekly' | 'monthly' | 'all_time'

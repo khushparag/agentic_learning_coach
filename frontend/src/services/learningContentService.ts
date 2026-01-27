@@ -6,6 +6,7 @@
  */
 
 import api from './api';
+import { lessonCache } from '../utils/contentCache';
 import type {
   StructuredLesson,
   LessonProgress,
@@ -19,28 +20,10 @@ import type {
   ExplainDifferentlyResponse,
   CreateNoteRequest,
   ExportNotesResponse,
-  SkillLevel,
   NoteType,
   HighlightColor,
   TextBlock,
 } from '../types/learning-content';
-
-// Cache for lessons to avoid repeated API calls
-const lessonCache = new Map<string, { lesson: StructuredLesson; timestamp: number }>();
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-
-function getCachedLesson(key: string): StructuredLesson | null {
-  const cached = lessonCache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.lesson;
-  }
-  lessonCache.delete(key);
-  return null;
-}
-
-function setCachedLesson(key: string, lesson: StructuredLesson): void {
-  lessonCache.set(key, { lesson, timestamp: Date.now() });
-}
 
 /**
  * Generate a structured lesson for a topic
@@ -49,7 +32,7 @@ export async function generateLesson(request: GenerateLessonRequest): Promise<Ge
   const cacheKey = `${request.topic}-${request.taskTitle}-${request.skillLevel}`;
   
   // Check cache first
-  const cached = getCachedLesson(cacheKey);
+  const cached = lessonCache.get(cacheKey);
   if (cached) {
     return { lesson: cached, generated: false };
   }
@@ -64,7 +47,7 @@ export async function generateLesson(request: GenerateLessonRequest): Promise<Ge
     });
     
     // Cache the lesson
-    setCachedLesson(cacheKey, response.data.lesson);
+    lessonCache.set(cacheKey, response.data.lesson);
     
     return response.data;
   } catch (error: any) {
@@ -115,14 +98,14 @@ export async function generateLesson(request: GenerateLessonRequest): Promise<Ge
  * Get a lesson by ID
  */
 export async function getLesson(lessonId: string): Promise<StructuredLesson> {
-  const cached = getCachedLesson(lessonId);
+  const cached = lessonCache.get(lessonId);
   if (cached) {
     return cached;
   }
   
   try {
     const response = await api.get<GenerateLessonResponse>(`/api/v1/content/lesson/${lessonId}`);
-    setCachedLesson(lessonId, response.data.lesson);
+    lessonCache.set(lessonId, response.data.lesson);
     return response.data.lesson;
   } catch (error) {
     console.error('Failed to get lesson:', error);

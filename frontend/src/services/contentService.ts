@@ -6,6 +6,7 @@
  */
 
 import api from './api'
+import { contentGenerationCache } from '../utils/contentCache'
 
 // Types for content generation
 export interface GenerateContentRequest {
@@ -41,25 +42,8 @@ export interface ExplainConceptResponse {
   related_concepts: string[]
 }
 
-// Cache for generated content to avoid repeated API calls
-const contentCache = new Map<string, { content: GenerateContentResponse; timestamp: number }>()
-const CACHE_TTL = 30 * 60 * 1000 // 30 minutes
-
 function getCacheKey(request: GenerateContentRequest): string {
   return `${request.task_title}-${request.topic}-${request.task_type}-${request.skill_level || 'intermediate'}`
-}
-
-function getCachedContent(key: string): GenerateContentResponse | null {
-  const cached = contentCache.get(key)
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.content
-  }
-  contentCache.delete(key)
-  return null
-}
-
-function setCachedContent(key: string, content: GenerateContentResponse): void {
-  contentCache.set(key, { content, timestamp: Date.now() })
 }
 
 /**
@@ -69,7 +53,7 @@ export async function generateContent(request: GenerateContentRequest): Promise<
   const cacheKey = getCacheKey(request)
   
   // Check cache first
-  const cached = getCachedContent(cacheKey)
+  const cached = contentGenerationCache.get(cacheKey)
   if (cached) {
     return cached
   }
@@ -85,7 +69,7 @@ export async function generateContent(request: GenerateContentRequest): Promise<
     })
     
     // Cache the response
-    setCachedContent(cacheKey, response.data)
+    contentGenerationCache.set(cacheKey, response.data)
     
     return response.data
   } catch (error) {
