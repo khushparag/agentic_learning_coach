@@ -1,0 +1,28 @@
+{
+  "user": {
+    "id": "user-123",
+    "email": "test@example.com",
+    "name": "Test User",
+    "avatar": "https://example.com/avatar.jpg"
+  },
+  "profile": {
+    "id": "profile-123",
+    "skillLevel": "intermediate",
+    "goals": ["javascript", "react", "typescript"],
+    "timeConstraints": {
+      "hoursPerWeek": 10,
+      "preferredTimes": ["evening", "weekend"]
+    },
+    "preferences": {
+      "learningStyle": "kinesthetic",
+      "difficulty": "adaptive",
+      "notifications": true
+    },
+    "stats": {
+      "completedExercises": 45,
+      "currentStreak": 7,
+      "averageScore": 87,
+      "totalTimeSpent": 2340
+    }
+  }
+}

@@ -1,0 +1,214 @@
+# =============================================================================
+# Prometheus Alert Rules for Learning Coach
+# =============================================================================
+# This file defines alerting rules for monitoring the Learning Coach system
+# following the observability and security guidelines.
+# =============================================================================
+
+groups:
+  # ---------------------------------------------------------------------------
+  # System Health Alerts
+  # ---------------------------------------------------------------------------
+  - name: system.health
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} on {{ $labels.instance }} has been down for more than 1 minute."
+          runbook_url: "https://docs.learning-coach.com/runbooks/service-down"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          category: resource
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 90% on {{ $labels.instance }} for more than 5 minutes."
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: resource
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is above 80% on {{ $labels.instance }} for more than 5 minutes."
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+          category: resource
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk space is below 10% on {{ $labels.instance }} for {{ $labels.mountpoint }}."
+
+  # ---------------------------------------------------------------------------
+  # Application Performance Alerts
+  # ---------------------------------------------------------------------------
+  - name: application.performance
+    rules:
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High response time for {{ $labels.job }}"
+          description: "95th percentile response time is above 2 seconds for {{ $labels.job }}."
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          category: reliability
+        annotations:
+          summary: "High error rate for {{ $labels.job }}"
+          description: "Error rate is above 5% for {{ $labels.job }} for more than 5 minutes."
+
+      - alert: DatabaseConnectionsHigh
+        expr: postgres_stat_database_numbackends / postgres_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "High database connections"
+          description: "Database connections are above 80% of the maximum for more than 5 minutes."
+
+  # ---------------------------------------------------------------------------
+  # Security Alerts
+  # ---------------------------------------------------------------------------
+  - name: security
+    rules:
+      - alert: SuspiciousCodeExecution
+        expr: increase(code_execution_suspicious_total[5m]) > 0
+        for: 0s
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Suspicious code execution detected"
+          description: "Suspicious code execution patterns detected in runner service."
+          runbook_url: "https://docs.learning-coach.com/runbooks/security-incident"
+
+      - alert: HighFailedLoginAttempts
+        expr: increase(auth_failed_attempts_total[5m]) > 10
+        for: 1m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "High number of failed login attempts"
+          description: "More than 10 failed login attempts in the last 5 minutes."
+
+      - alert: RateLimitExceeded
+        expr: increase(rate_limit_exceeded_total[5m]) > 100
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Rate limit frequently exceeded"
+          description: "Rate limit has been exceeded more than 100 times in the last 5 minutes."
+
+      - alert: UnauthorizedAPIAccess
+        expr: increase(http_requests_total{status="401"}[5m]) > 50
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "High number of unauthorized API requests"
+          description: "More than 50 unauthorized API requests in the last 5 minutes."
+
+  # ---------------------------------------------------------------------------
+  # Learning Coach Specific Alerts
+  # ---------------------------------------------------------------------------
+  - name: learning.coach
+    rules:
+      - alert: ExerciseGenerationFailure
+        expr: increase(exercise_generation_failures_total[10m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          category: functionality
+        annotations:
+          summary: "Exercise generation failures"
+          description: "More than 5 exercise generation failures in the last 10 minutes."
+
+      - alert: CodeExecutionTimeout
+        expr: increase(code_execution_timeouts_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High number of code execution timeouts"
+          description: "More than 10 code execution timeouts in the last 5 minutes."
+
+      - alert: LearnerProgressStalled
+        expr: avg_over_time(learner_progress_velocity[1h]) < 0.1
+        for: 30m
+        labels:
+          severity: info
+          category: learning
+        annotations:
+          summary: "Learner progress velocity is low"
+          description: "Average learner progress velocity has been below 0.1 for the last hour."
+
+      - alert: AgentCommunicationFailure
+        expr: increase(agent_communication_failures_total[5m]) > 3
+        for: 2m
+        labels:
+          severity: critical
+          category: system
+        annotations:
+          summary: "Agent communication failures"
+          description: "More than 3 agent communication failures in the last 5 minutes."
+
+  # ---------------------------------------------------------------------------
+  # Infrastructure Alerts
+  # ---------------------------------------------------------------------------
+  - name: infrastructure
+    rules:
+      - alert: ContainerRestarting
+        expr: increase(container_start_time_seconds[10m]) > 0
+        for: 0s
+        labels:
+          severity: warning
+          category: stability
+        annotations:
+          summary: "Container {{ $labels.name }} is restarting"
+          description: "Container {{ $labels.name }} has restarted in the last 10 minutes."
+
+      - alert: VolumeSpaceLow
+        expr: (1 - (container_fs_usage_bytes / container_fs_limit_bytes)) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+          category: storage
+        annotations:
+          summary: "Low volume space for {{ $labels.name }}"
+          description: "Volume space is below 10% for container {{ $labels.name }}."
+
+      - alert: NetworkLatencyHigh
+        expr: histogram_quantile(0.95, rate(network_latency_seconds_bucket[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "High network latency"
+          description: "95th percentile network latency is above 100ms for more than 5 minutes."

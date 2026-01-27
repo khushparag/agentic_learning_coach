@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learning Coach - Offline</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      color: #333;
+    }
+
+    .offline-container {
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      max-width: 400px;
+      width: 100%;
+      animation: slideUp 0.6s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .offline-icon {
+      font-size: 4rem;
+      margin-bottom: 1.5rem;
+      animation: bounce 2s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+      }
+      40% {
+        transform: translateY(-10px);
+      }
+      60% {
+        transform: translateY(-5px);
+      }
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 0.75rem;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #6b7280;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+
+    .offline-features {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      text-align: left;
+    }
+
+    .offline-features h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 1rem;
+    }
+
+    .feature-list {
+      list-style: none;
+    }
+
+    .feature-list li {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+
+    .feature-list li:last-child {
+      margin-bottom: 0;
+    }
+
+    .feature-icon {
+      width: 16px;
+      height: 16px;
+      margin-right: 0.75rem;
+      color: #10b981;
+    }
+
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .connection-status {
+      margin-top: 1.5rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .status-offline {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+
+    .status-online {
+      background: #f0fdf4;
+      color: #16a34a;
+      border: 1px solid #bbf7d0;
+    }
+
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+
+    /* Mobile optimizations */
+    @media (max-width: 640px) {
+      .offline-container {
+        padding: 1.5rem;
+        margin: 0.5rem;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      .offline-icon {
+        font-size: 3rem;
+      }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      }
+
+      .offline-container {
+        background: #1f2937;
+        color: #f9fafb;
+      }
+
+      h1 {
+        color: #f9fafb;
+      }
+
+      .subtitle {
+        color: #d1d5db;
+      }
+
+      .offline-features {
+        background: #374151;
+      }
+
+      .offline-features h3 {
+        color: #f9fafb;
+      }
+
+      .feature-list li {
+        color: #d1d5db;
+      }
+
+      .btn-secondary {
+        background: #374151;
+        color: #f9fafb;
+        border-color: #4b5563;
+      }
+
+      .btn-secondary:hover {
+        background: #4b5563;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-container">
+    <div class="offline-icon">📚</div>
+    
+    <h1>You're Offline</h1>
+    <p class="subtitle">
+      Don't worry! You can still access some features while offline.
+    </p>
+
+    <div class="offline-features">
+      <h3>Available Offline:</h3>
+      <ul class="feature-list">
+        <li>
+          <svg class="feature-icon" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+          </svg>
+          View cached learning materials
+        </li>
+        <li>
+          <svg class="feature-icon" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+          </svg>
+          Review previous exercises
+        </li>
+        <li>
+          <svg class="feature-icon" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+          </svg>
+          Access saved progress data
+        </li>
+        <li>
+          <svg class="feature-icon" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+          </svg>
+          Work on offline exercises
+        </li>
+      </ul>
+    </div>
+
+    <div class="action-buttons">
+      <button class="btn btn-primary" onclick="tryReconnect()">
+        Try Again
+      </button>
+      <button class="btn btn-secondary" onclick="goOffline()">
+        Continue Offline
+      </button>
+    </div>
+
+    <div id="connectionStatus" class="connection-status status-offline">
+      <span class="pulse">●</span> No internet connection
+    </div>
+  </div>
+
+  <script>
+    // Check connection status
+    function updateConnectionStatus() {
+      const statusEl = document.getElementById('connectionStatus');
+      
+      if (navigator.onLine) {
+        statusEl.className = 'connection-status status-online';
+        statusEl.innerHTML = '<span>●</span> Back online! Refreshing...';
+        
+        // Auto-refresh when back online
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        statusEl.className = 'connection-status status-offline';
+        statusEl.innerHTML = '<span class="pulse">●</span> No internet connection';
+      }
+    }
+
+    // Try to reconnect
+    function tryReconnect() {
+      updateConnectionStatus();
+      
+      if (navigator.onLine) {
+        window.location.reload();
+      } else {
+        // Show feedback that we're still offline
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Still offline...';
+        btn.disabled = true;
+        
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }, 2000);
+      }
+    }
+
+    // Continue in offline mode
+    function goOffline() {
+      // Try to navigate to cached app shell
+      try {
+        window.location.href = '/';
+      } catch (error) {
+        console.log('Cannot navigate while offline');
+      }
+    }
+
+    // Listen for connection changes
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+
+    // Initial status check
+    updateConnectionStatus();
+
+    // Periodic connection check
+    setInterval(() => {
+      // Try a lightweight request to check connectivity
+      fetch('/manifest.json', { 
+        method: 'HEAD',
+        cache: 'no-cache'
+      })
+      .then(() => {
+        if (!navigator.onLine) {
+          // Force online status update
+          window.dispatchEvent(new Event('online'));
+        }
+      })
+      .catch(() => {
+        if (navigator.onLine) {
+          // Force offline status update
+          window.dispatchEvent(new Event('offline'));
+        }
+      });
+    }, 5000);
+
+    // Service Worker communication
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data.type === 'OFFLINE_SYNC_COMPLETE') {
+          const statusEl = document.getElementById('connectionStatus');
+          statusEl.innerHTML = '<span>●</span> Synced offline changes!';
+          statusEl.className = 'connection-status status-online';
+          
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

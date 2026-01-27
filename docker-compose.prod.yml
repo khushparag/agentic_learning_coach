@@ -1,0 +1,231 @@
+# =============================================================================
+# Docker Compose - Production Configuration
+# =============================================================================
+# This file contains production-specific overrides for docker-compose.yml.
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Note: Do NOT use docker-compose.override.yml in production!
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Coach Service - Production Configuration
+  # ---------------------------------------------------------------------------
+  coach-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    command: >
+      sh -c "
+        echo 'Running database migrations...' &&
+        alembic upgrade head &&
+        echo 'Starting Learning Coach API...' &&
+        uvicorn src.adapters.api.main:app --host 0.0.0.0 --port 8000 --workers 4
+      "
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - RUN_MIGRATIONS=true
+    # Remove development volumes
+    volumes: []
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # More aggressive health checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Runner Service - Production Configuration
+  # ---------------------------------------------------------------------------
+  runner-service:
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      # Stricter limits in production
+      - MAX_EXECUTION_TIME=5
+      - MAX_MEMORY_MB=128
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    # More aggressive health checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL - Production Configuration
+  # ---------------------------------------------------------------------------
+  postgres:
+    # Don't expose port externally in production
+    ports: []
+    # Production performance tuning
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c effective_cache_size=768MB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=4MB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c max_worker_processes=4
+      -c max_parallel_workers_per_gather=2
+      -c max_parallel_workers=4
+      -c max_parallel_maintenance_workers=2
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ---------------------------------------------------------------------------
+  # Redis - Production Configuration
+  # ---------------------------------------------------------------------------
+  redis:
+    # Don't expose port externally in production
+    ports: []
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --loglevel warning
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # ---------------------------------------------------------------------------
+  # Qdrant - Production Configuration
+  # ---------------------------------------------------------------------------
+  qdrant:
+    # Don't expose ports externally in production
+    ports: []
+    environment:
+      - QDRANT__LOG_LEVEL=WARN
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Frontend - Production Configuration
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - VITE_API_BASE_URL=http://coach-service:8000
+        - VITE_WS_URL=ws://coach-service:8000
+        - VITE_APP_ENV=production
+        - VITE_DEBUG=false
+    environment:
+      # Production API Configuration (internal service communication)
+      - VITE_API_BASE_URL=http://coach-service:8000
+      - VITE_WS_URL=ws://coach-service:8000
+      - VITE_APP_ENV=production
+      - VITE_DEBUG=false
+      
+      # Feature flags for production
+      - VITE_FEATURE_SOCIAL_LEARNING=true
+      - VITE_FEATURE_GAMIFICATION=true
+      - VITE_FEATURE_ANALYTICS=true
+      - VITE_FEATURE_REAL_TIME_UPDATES=true
+      - VITE_FEATURE_CODE_SHARING=true
+      - VITE_FEATURE_PEER_CHALLENGES=true
+      - VITE_FEATURE_WEBSOCKET_RECONNECT=true
+      - VITE_FEATURE_LIVE_COLLABORATION=true
+      - VITE_FEATURE_REAL_TIME_LEADERBOARD=true
+      
+      # Production performance settings
+      - VITE_API_TIMEOUT=15000
+      - VITE_MAX_FILE_SIZE=5242880
+      - VITE_IMAGE_QUALITY=75
+      
+      # Production UI settings
+      - VITE_DEFAULT_THEME=system
+      - VITE_ENABLE_ANIMATIONS=true
+      - VITE_DEFAULT_LOCALE=en-US
+      
+      # Production editor settings
+      - VITE_DEFAULT_LANGUAGE=javascript
+      - VITE_EDITOR_MINIMAP=false
+      - VITE_EDITOR_THEME=vs-dark
+      
+      # Production learning settings
+      - VITE_DEFAULT_SESSION_LENGTH=60
+      - VITE_MAX_HINTS_PER_EXERCISE=3
+      - VITE_AUTOSAVE_INTERVAL=30000
+      
+      # Production gamification settings
+      - VITE_ENABLE_XP_ANIMATIONS=true
+      - VITE_ENABLE_ACHIEVEMENT_NOTIFICATIONS=true
+      - VITE_STREAK_REMINDER_TIME=20:00
+      
+      # Production social settings
+      - VITE_MAX_SOLUTIONS_PER_DAY=10
+      - VITE_MAX_CHALLENGES_PER_DAY=5
+      - VITE_MAX_STUDY_GROUP_MEMBERS=20
+    # Remove development volumes
+    volumes: []
+    # Don't expose port externally in production (use reverse proxy)
+    ports: []
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    # More aggressive health checks
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s

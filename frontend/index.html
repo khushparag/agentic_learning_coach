@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    
+    <!-- PWA and Mobile Optimization Meta Tags -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="background-color" content="#ffffff" />
+    <meta name="color-scheme" content="light dark" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    
+    <!-- iOS Safari Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Learning Coach" />
+    <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#2563eb" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Agentic Learning Coach" />
+    <meta property="og:description" content="An intelligent multi-agent system that provides personalized coding education and mentorship for developers" />
+    <meta property="og:image" content="/icons/icon-512x512.png" />
+    <meta property="og:url" content="https://learning-coach.app" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Agentic Learning Coach" />
+    <meta name="twitter:description" content="Personalized coding education with AI-driven curriculum and real-time feedback" />
+    <meta name="twitter:image" content="/icons/icon-512x512.png" />
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="An intelligent multi-agent system that provides personalized coding education and mentorship for developers. Features adaptive learning, practice-first approach, and real-time feedback." />
+    <meta name="keywords" content="coding education, programming learning, AI tutor, developer training, personalized learning, coding practice" />
+    <meta name="author" content="Learning Coach Team" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Performance and Security -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    
+    <!-- Preconnect to external domains for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- DNS Prefetch for likely external resources -->
+    <link rel="dns-prefetch" href="https://api.openai.com" />
+    <link rel="dns-prefetch" href="https://api.anthropic.com" />
+    
+    <!-- Critical CSS for above-the-fold content -->
+    <style>
+      /* Critical CSS for initial render */
+      * {
+        box-sizing: border-box;
+      }
+      
+      html {
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      }
+      
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f9fafb;
+        color: #111827;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
+      }
+      
+      #root {
+        min-height: 100vh;
+        min-height: calc(var(--vh, 1vh) * 100);
+      }
+      
+      /* Loading spinner for initial load */
+      .loading-spinner {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e5e7eb;
+        border-top: 3px solid #2563eb;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        z-index: 9999;
+      }
+      
+      @keyframes spin {
+        0% { transform: translate(-50%, -50%) rotate(0deg); }
+        100% { transform: translate(-50%, -50%) rotate(360deg); }
+      }
+      
+      /* Hide loading spinner when app loads */
+      .app-loaded .loading-spinner {
+        display: none;
+      }
+      
+      /* Safe area support for mobile devices */
+      :root {
+        --safe-area-inset-top: env(safe-area-inset-top, 0px);
+        --safe-area-inset-right: env(safe-area-inset-right, 0px);
+        --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-area-inset-left: env(safe-area-inset-left, 0px);
+        --vh: 1vh;
+      }
+      
+      /* Prevent zoom on input focus (iOS) */
+      @media (max-width: 767px) {
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="url"],
+        input[type="search"],
+        textarea,
+        select {
+          font-size: 16px !important;
+        }
+      }
+      
+      /* Dark mode support */
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #111827;
+          color: #f9fafb;
+        }
+      }
+      
+      /* Reduced motion support */
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+      
+      /* High contrast mode support */
+      @media (prefers-contrast: high) {
+        body {
+          background-color: white;
+          color: black;
+        }
+      }
+    </style>
+    
+    <title>Agentic Learning Coach - Personalized Coding Education</title>
+  </head>
+  <body>
+    <!-- Loading spinner for initial app load -->
+    <div class="loading-spinner" id="initial-loader"></div>
+    
+    <!-- Skip links for accessibility -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded">
+      Skip to main content
+    </a>
+    
+    <!-- Main app container -->
+    <div id="root"></div>
+    
+    <!-- Fallback content for users with JavaScript disabled -->
+    <noscript>
+      <div style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #f9fafb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        text-align: center;
+        padding: 2rem;
+        z-index: 10000;
+      ">
+        <div style="
+          background: white;
+          padding: 2rem;
+          border-radius: 8px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          max-width: 400px;
+        ">
+          <h1 style="color: #1f2937; margin-bottom: 1rem;">JavaScript Required</h1>
+          <p style="color: #6b7280; margin-bottom: 1.5rem;">
+            Learning Coach requires JavaScript to provide an interactive learning experience.
+            Please enable JavaScript in your browser settings and refresh the page.
+          </p>
+          <button 
+            onclick="window.location.reload()"
+            style="
+              background: #2563eb;
+              color: white;
+              border: none;
+              padding: 0.75rem 1.5rem;
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 1rem;
+            "
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    </noscript>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      // Set viewport height custom property for mobile
+      function setViewportHeight() {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+      }
+      
+      // Initial setup
+      setViewportHeight();
+      
+      // Update on resize and orientation change
+      window.addEventListener('resize', setViewportHeight);
+      window.addEventListener('orientationchange', () => {
+        setTimeout(setViewportHeight, 100);
+      });
+      
+      // Hide loading spinner when app loads
+      window.addEventListener('load', () => {
+        document.body.classList.add('app-loaded');
+        const loader = document.getElementById('initial-loader');
+        if (loader) {
+          setTimeout(() => loader.remove(), 500);
+        }
+      });
+      
+      // Register Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+      
+      // Install prompt for PWA
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Show install button or banner
+        const installBanner = document.createElement('div');
+        installBanner.innerHTML = `
+          <div style="
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: #2563eb;
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          ">
+            <div>
+              <strong>Install Learning Coach</strong>
+              <div style="font-size: 0.875rem; opacity: 0.9;">Get the full app experience</div>
+            </div>
+            <div>
+              <button id="install-btn" style="
+                background: white;
+                color: #2563eb;
+                border: none;
+                padding: 0.5rem 1rem;
+                border-radius: 4px;
+                margin-right: 0.5rem;
+                cursor: pointer;
+                font-weight: 600;
+              ">Install</button>
+              <button id="dismiss-btn" style="
+                background: transparent;
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                padding: 0.5rem 1rem;
+                border-radius: 4px;
+                cursor: pointer;
+              ">Later</button>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(installBanner);
+        
+        document.getElementById('install-btn').addEventListener('click', () => {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+              console.log('User accepted the install prompt');
+            }
+            deferredPrompt = null;
+            installBanner.remove();
+          });
+        });
+        
+        document.getElementById('dismiss-btn').addEventListener('click', () => {
+          installBanner.remove();
+        });
+      });
+    </script>
+    
+    <!-- Main application script -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

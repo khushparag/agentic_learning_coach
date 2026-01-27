@@ -1,0 +1,139 @@
+# =============================================================================
+# Docker Compose - Development Override Configuration
+# =============================================================================
+# This file contains development-specific overrides for docker-compose.yml.
+# It is automatically loaded when running `docker-compose up` in development.
+#
+# Usage:
+#   Development: docker-compose up -d (automatically includes this file)
+#
+# Note: This file should NOT be used in production!
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Coach Service - Development Overrides
+  # ---------------------------------------------------------------------------
+  coach-service:
+    # Enable hot reload and development features
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - RUN_MIGRATIONS=true
+    # Mount source code for hot reload
+    volumes:
+      - .:/app
+      - /app/.venv  # Exclude virtual environment
+      - /app/__pycache__  # Exclude pycache
+      - /app/.pytest_cache  # Exclude pytest cache
+    # Development command with hot reload
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        python -c 'import time; time.sleep(5)' &&
+        echo 'Running database migrations...' &&
+        alembic upgrade head &&
+        echo 'Starting Learning Coach API with hot reload...' &&
+        uvicorn src.adapters.api.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
+      "
+
+  # ---------------------------------------------------------------------------
+  # Runner Service - Development Overrides
+  # ---------------------------------------------------------------------------
+  runner-service:
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      # More lenient limits for development
+      - MAX_EXECUTION_TIME=30
+      - MAX_MEMORY_MB=512
+
+  # ---------------------------------------------------------------------------
+  # Frontend - Development Overrides
+  # ---------------------------------------------------------------------------
+  frontend:
+    # Development build target
+    build:
+      target: development
+    environment:
+      # Development API URLs (host.docker.internal for cross-container communication)
+      - VITE_API_BASE_URL=http://localhost:8002
+      - VITE_WS_URL=ws://localhost:8002
+      - VITE_APP_ENV=development
+      - VITE_DEBUG=true
+      
+      # Enable development tools
+      - VITE_USE_MOCK_DATA=false
+      - VITE_ENABLE_QUERY_DEVTOOLS=true
+      - VITE_ENABLE_REDUX_DEVTOOLS=true
+      
+      # Development performance settings (more lenient)
+      - VITE_API_TIMEOUT=60000
+      - VITE_MAX_FILE_SIZE=20971520
+      - VITE_IMAGE_QUALITY=90
+    # Mount source code for hot reload
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Exclude node_modules
+      - /app/dist  # Exclude dist
+      - /app/.vite  # Exclude vite cache
+    # Development command with hot reload
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]
+    # Override health check for development
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL - Development Overrides
+  # ---------------------------------------------------------------------------
+  postgres:
+    # Expose port for external connections in development
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    # Development-friendly settings
+    command: >
+      postgres
+      -c log_statement=all
+      -c log_duration=on
+      -c log_min_duration_statement=0
+      -c shared_buffers=128MB
+      -c effective_cache_size=256MB
+
+  # ---------------------------------------------------------------------------
+  # Redis - Development Overrides
+  # ---------------------------------------------------------------------------
+  redis:
+    # Expose port for external connections in development
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    # Development command with verbose logging
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru --loglevel verbose
+
+  # ---------------------------------------------------------------------------
+  # Qdrant - Development Overrides
+  # ---------------------------------------------------------------------------
+  qdrant:
+    # Expose ports for external connections in development
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    environment:
+      - QDRANT__LOG_LEVEL=DEBUG
+
+# =============================================================================
+# Development-specific volumes
+# =============================================================================
+volumes:
+  # Development volumes for faster rebuilds
+  node_modules:
+    driver: local
+    name: learning-coach-node-modules
+  vite_cache:
+    driver: local
+    name: learning-coach-vite-cache

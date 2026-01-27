@@ -1,0 +1,560 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '20.x'
+  CACHE_VERSION: v1
+
+jobs:
+  # Code Quality and Security Checks
+  code-quality:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for better analysis
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci --prefer-offline --no-audit
+      
+    - name: TypeScript type checking
+      working-directory: frontend
+      run: npm run type-check
+      
+    - name: ESLint analysis
+      working-directory: frontend
+      run: |
+        npm run lint -- --format=json --output-file=eslint-report.json || true
+        npm run lint
+        
+    - name: Prettier format check
+      working-directory: frontend
+      run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,md}"
+      
+    - name: Dependency vulnerability scan
+      working-directory: frontend
+      run: |
+        npm audit --audit-level=moderate --json > audit-report.json || true
+        npm audit --audit-level=moderate
+        
+    - name: License compliance check
+      working-directory: frontend
+      run: |
+        npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD' --json > license-report.json
+        
+    - name: Bundle size analysis
+      working-directory: frontend
+      run: |
+        npm run build:stats
+        npx bundlesize
+        
+    - name: Upload quality reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: quality-reports
+        path: |
+          frontend/eslint-report.json
+          frontend/audit-report.json
+          frontend/license-report.json
+          frontend/dist/stats.json
+        retention-days: 30
+
+  # Security Scanning
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci --prefer-offline --no-audit
+      
+    - name: Snyk security scan
+      uses: snyk/actions/node@master
+      continue-on-error: true
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high --json > snyk-report.json
+        
+    - name: CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript
+        
+    - name: Build for CodeQL
+      working-directory: frontend
+      run: npm run build
+      
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      
+    - name: OWASP ZAP Baseline Scan
+      uses: zaproxy/action-baseline@v0.10.0
+      with:
+        target: 'http://localhost:3000'
+        
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          frontend/snyk-report.json
+          report_html.html
+        retention-days: 30
+
+  # Unit and Integration Tests
+  unit-tests:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci --prefer-offline --no-audit
+      
+    - name: Run unit tests with coverage
+      working-directory: frontend
+      run: npm run test:ci
+      env:
+        CI: true
+        
+    - name: Coverage quality gate
+      working-directory: frontend
+      run: |
+        COVERAGE=$(node -e "
+          const coverage = require('./coverage/coverage-summary.json');
+          const total = coverage.total;
+          console.log(Math.min(total.lines.pct, total.functions.pct, total.branches.pct, total.statements.pct));
+        ")
+        echo "Coverage: $COVERAGE%"
+        if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+          echo "Coverage $COVERAGE% is below 80% threshold"
+          exit 1
+        fi
+        
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: frontend/coverage/lcov.info
+        flags: frontend-${{ matrix.node-version }}
+        name: frontend-coverage-${{ matrix.node-version }}
+        token: ${{ secrets.CODECOV_TOKEN }}
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.node-version }}
+        path: |
+          frontend/coverage/
+          frontend/test-results.xml
+        retention-days: 30
+
+  # Accessibility Tests
+  accessibility-tests:
+    name: Accessibility Testing
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci --prefer-offline --no-audit
+      
+    - name: Build application
+      working-directory: frontend
+      run: npm run build
+      
+    - name: Run accessibility tests
+      working-directory: frontend
+      run: |
+        # Start the application
+        npm run preview &
+        APP_PID=$!
+        
+        # Wait for app to start
+        npx wait-on http://localhost:4173 --timeout 60000
+        
+        # Run axe-core accessibility tests
+        npx @axe-core/cli http://localhost:4173 \
+          --exit \
+          --save accessibility-report.json \
+          --tags wcag2a,wcag2aa,wcag21aa \
+          --rules color-contrast,keyboard-navigation,focus-management
+          
+        # Kill the app
+        kill $APP_PID
+        
+    - name: Pa11y accessibility scan
+      working-directory: frontend
+      run: |
+        npm run preview &
+        APP_PID=$!
+        npx wait-on http://localhost:4173 --timeout 60000
+        
+        npx pa11y http://localhost:4173 \
+          --reporter json \
+          --standard WCAG2AA \
+          --level error > pa11y-report.json
+          
+        kill $APP_PID
+        
+    - name: Upload accessibility reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: accessibility-reports
+        path: |
+          frontend/accessibility-report.json
+          frontend/pa11y-report.json
+        retention-days: 30
+
+  # Performance Tests
+  performance-tests:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci --prefer-offline --no-audit
+      
+    - name: Build application
+      working-directory: frontend
+      run: npm run build
+      
+    - name: Install Lighthouse CI
+      run: npm install -g @lhci/cli@0.12.x
+      
+    - name: Run Lighthouse CI
+      working-directory: frontend
+      run: |
+        npm run preview &
+        APP_PID=$!
+        npx wait-on http://localhost:4173 --timeout 60000
+        
+        lhci autorun --config=lighthouserc.js
+        
+        kill $APP_PID
+      env:
+        LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+        
+    - name: Performance budget check
+      working-directory: frontend
+      run: |
+        # Check bundle size limits
+        BUNDLE_SIZE=$(du -sb dist/ | cut -f1)
+        MAX_SIZE=5242880  # 5MB in bytes
+        
+        if [ $BUNDLE_SIZE -gt $MAX_SIZE ]; then
+          echo "Bundle size $BUNDLE_SIZE exceeds limit of $MAX_SIZE bytes"
+          exit 1
+        fi
+        
+        echo "Bundle size: $BUNDLE_SIZE bytes (within limit)"
+        
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: performance-reports
+        path: |
+          frontend/.lighthouseci/
+          frontend/dist/stats.json
+        retention-days: 30
+
+  # E2E Tests
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci --prefer-offline --no-audit
+      
+    - name: Build application
+      working-directory: frontend
+      run: npm run build
+      
+    - name: Start mock backend
+      run: |
+        # Start mock API server for E2E tests
+        cd frontend && npm run start:mock-api &
+        npx wait-on http://localhost:8080/api/health --timeout 60000
+        
+    - name: Run Cypress E2E tests
+      working-directory: frontend
+      run: npm run test:e2e:ci
+      env:
+        CYPRESS_baseUrl: http://localhost:4173
+        CYPRESS_apiUrl: http://localhost:8080/api
+        
+    - name: Upload Cypress artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: cypress-artifacts
+        path: |
+          frontend/cypress/screenshots/
+          frontend/cypress/videos/
+        retention-days: 30
+
+  # Component Tests (Storybook)
+  component-tests:
+    name: Component Testing
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci --prefer-offline --no-audit
+      
+    - name: Build Storybook
+      working-directory: frontend
+      run: npm run build-storybook
+      
+    - name: Run Storybook tests
+      working-directory: frontend
+      run: |
+        npx concurrently -k -s first -n "SB,TEST" -c "magenta,blue" \
+          "npx http-server storybook-static --port 6006 --silent" \
+          "npx wait-on http://localhost:6006 && npm run storybook:test"
+          
+    - name: Upload Storybook build
+      uses: actions/upload-artifact@v4
+      with:
+        name: storybook-build
+        path: frontend/storybook-static/
+        retention-days: 30
+
+  # Visual Regression Tests
+  visual-tests:
+    name: Visual Regression Testing
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci --prefer-offline --no-audit
+      
+    - name: Build Storybook
+      working-directory: frontend
+      run: npm run build-storybook
+      
+    - name: Run Percy visual tests
+      working-directory: frontend
+      run: npm run test:visual
+      env:
+        PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
+        PERCY_BRANCH: ${{ github.head_ref }}
+        PERCY_PULL_REQUEST: ${{ github.event.number }}
+
+  # Quality Gates
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    needs: [code-quality, security-scan, unit-tests, accessibility-tests, performance-tests, e2e-tests, component-tests]
+    if: always()
+    
+    steps:
+    - name: Check all job results
+      run: |
+        echo "Job Results:"
+        echo "Code Quality: ${{ needs.code-quality.result }}"
+        echo "Security Scan: ${{ needs.security-scan.result }}"
+        echo "Unit Tests: ${{ needs.unit-tests.result }}"
+        echo "Accessibility Tests: ${{ needs.accessibility-tests.result }}"
+        echo "Performance Tests: ${{ needs.performance-tests.result }}"
+        echo "E2E Tests: ${{ needs.e2e-tests.result }}"
+        echo "Component Tests: ${{ needs.component-tests.result }}"
+        
+        # Check critical jobs
+        if [[ "${{ needs.code-quality.result }}" != "success" ]]; then
+          echo "❌ Code quality checks failed"
+          exit 1
+        fi
+        
+        if [[ "${{ needs.unit-tests.result }}" != "success" ]]; then
+          echo "❌ Unit tests failed"
+          exit 1
+        fi
+        
+        if [[ "${{ needs.e2e-tests.result }}" != "success" ]]; then
+          echo "❌ E2E tests failed"
+          exit 1
+        fi
+        
+        # Check non-critical jobs (warnings only)
+        if [[ "${{ needs.security-scan.result }}" != "success" ]]; then
+          echo "⚠️ Security scan had issues (non-blocking)"
+        fi
+        
+        if [[ "${{ needs.accessibility-tests.result }}" != "success" ]]; then
+          echo "⚠️ Accessibility tests had issues (non-blocking)"
+        fi
+        
+        if [[ "${{ needs.performance-tests.result }}" != "success" ]]; then
+          echo "⚠️ Performance tests had issues (non-blocking)"
+        fi
+        
+        echo "✅ All critical quality gates passed!"
+        
+    - name: Post results to PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const botComment = comments.find(comment => 
+            comment.user.type === 'Bot' && 
+            comment.body.includes('Quality Gates Report')
+          );
+          
+          const getStatusIcon = (result) => result === 'success' ? '✅' : '❌';
+          const getStatusText = (result) => result === 'success' ? 'Passed' : 'Failed';
+          
+          const body = `## Quality Gates Report 🛡️
+          
+          | Check | Status | Result |
+          |-------|--------|--------|
+          | Code Quality | ${getStatusIcon('${{ needs.code-quality.result }}')} | ${getStatusText('${{ needs.code-quality.result }}')} |
+          | Security Scan | ${getStatusIcon('${{ needs.security-scan.result }}')} | ${getStatusText('${{ needs.security-scan.result }}')} |
+          | Unit Tests | ${getStatusIcon('${{ needs.unit-tests.result }}')} | ${getStatusText('${{ needs.unit-tests.result }}')} |
+          | Accessibility | ${getStatusIcon('${{ needs.accessibility-tests.result }}')} | ${getStatusText('${{ needs.accessibility-tests.result }}')} |
+          | Performance | ${getStatusIcon('${{ needs.performance-tests.result }}')} | ${getStatusText('${{ needs.performance-tests.result }}')} |
+          | E2E Tests | ${getStatusIcon('${{ needs.e2e-tests.result }}')} | ${getStatusText('${{ needs.e2e-tests.result }}')} |
+          | Component Tests | ${getStatusIcon('${{ needs.component-tests.result }}')} | ${getStatusText('${{ needs.component-tests.result }}')} |
+          
+          **Overall Status:** ${{ (needs.code-quality.result == 'success' && needs.unit-tests.result == 'success' && needs.e2e-tests.result == 'success') && '✅ Ready for merge' || '❌ Needs attention' }}
+          
+          View detailed results in the [Actions tab](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          `;
+          
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: body
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+          }

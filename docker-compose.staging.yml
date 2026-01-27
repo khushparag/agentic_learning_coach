@@ -1,0 +1,136 @@
+# =============================================================================
+# Docker Compose - Staging Environment Configuration
+# =============================================================================
+# This file contains staging-specific overrides for docker-compose.yml.
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Coach Service - Staging Configuration
+  # ---------------------------------------------------------------------------
+  coach-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      - ENVIRONMENT=staging
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      - RUN_MIGRATIONS=true
+    # Staging resource limits (between dev and prod)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1.5G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # Remove development volumes
+    volumes: []
+
+  # ---------------------------------------------------------------------------
+  # Frontend - Staging Configuration
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        - VITE_API_BASE_URL=https://api-staging.learning-coach.com
+        - VITE_WS_URL=wss://api-staging.learning-coach.com
+        - VITE_APP_ENV=staging
+        - VITE_DEBUG=false
+    environment:
+      # Staging API Configuration (external URLs)
+      - VITE_API_BASE_URL=https://api-staging.learning-coach.com
+      - VITE_WS_URL=wss://api-staging.learning-coach.com
+      - VITE_APP_ENV=staging
+      - VITE_DEBUG=false
+      
+      # Feature flags for staging (all enabled for testing)
+      - VITE_FEATURE_SOCIAL_LEARNING=true
+      - VITE_FEATURE_GAMIFICATION=true
+      - VITE_FEATURE_ANALYTICS=true
+      - VITE_FEATURE_REAL_TIME_UPDATES=true
+      - VITE_FEATURE_CODE_SHARING=true
+      - VITE_FEATURE_PEER_CHALLENGES=true
+      - VITE_FEATURE_WEBSOCKET_RECONNECT=true
+      - VITE_FEATURE_LIVE_COLLABORATION=true
+      - VITE_FEATURE_REAL_TIME_LEADERBOARD=true
+      
+      # Staging performance settings
+      - VITE_API_TIMEOUT=20000
+      - VITE_MAX_FILE_SIZE=8388608
+      - VITE_IMAGE_QUALITY=80
+    # Remove development volumes
+    volumes: []
+    # Staging resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+          memory: 768M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Runner Service - Staging Configuration
+  # ---------------------------------------------------------------------------
+  runner-service:
+    environment:
+      - ENVIRONMENT=staging
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+      # Moderate limits for staging
+      - MAX_EXECUTION_TIME=8
+      - MAX_MEMORY_MB=192
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL - Staging Configuration
+  # ---------------------------------------------------------------------------
+  postgres:
+    # Don't expose port externally in staging
+    ports: []
+    # Staging performance tuning
+    command: >
+      postgres
+      -c shared_buffers=192MB
+      -c effective_cache_size=576MB
+      -c maintenance_work_mem=48MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=4MB
+
+  # ---------------------------------------------------------------------------
+  # Redis - Staging Configuration
+  # ---------------------------------------------------------------------------
+  redis:
+    # Don't expose port externally in staging
+    ports: []
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 384mb
+      --maxmemory-policy allkeys-lru
+      --loglevel notice
+
+  # ---------------------------------------------------------------------------
+  # Qdrant - Staging Configuration
+  # ---------------------------------------------------------------------------
+  qdrant:
+    # Don't expose ports externally in staging
+    ports: []
+    environment:
+      - QDRANT__LOG_LEVEL=INFO

@@ -1,0 +1,338 @@
+# =============================================================================
+# Docker Compose - Monitoring and Observability Stack
+# =============================================================================
+# This file adds comprehensive monitoring, logging, and observability services
+# to the Learning Coach system following the observability guidelines.
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Prometheus - Metrics Collection
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: learning-coach-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    networks:
+      - learning-coach-network
+      - monitoring-network
+    restart: unless-stopped
+    labels:
+      - "monitoring.service=prometheus"
+      - "monitoring.type=metrics"
+
+  # ---------------------------------------------------------------------------
+  # Grafana - Metrics Visualization
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: learning-coach-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+    labels:
+      - "monitoring.service=grafana"
+      - "monitoring.type=visualization"
+
+  # ---------------------------------------------------------------------------
+  # Loki - Log Aggregation
+  # ---------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:2.8.0
+    container_name: learning-coach-loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+    labels:
+      - "monitoring.service=loki"
+      - "monitoring.type=logs"
+
+  # ---------------------------------------------------------------------------
+  # Promtail - Log Collection Agent
+  # ---------------------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:2.8.0
+    container_name: learning-coach-promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+    labels:
+      - "monitoring.service=promtail"
+      - "monitoring.type=log-agent"
+
+  # ---------------------------------------------------------------------------
+  # Jaeger - Distributed Tracing
+  # ---------------------------------------------------------------------------
+  jaeger:
+    image: jaegertracing/all-in-one:1.46
+    container_name: learning-coach-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # Jaeger collector HTTP
+      - "14250:14250"  # Jaeger collector gRPC
+      - "9411:9411"    # Zipkin collector
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+    labels:
+      - "monitoring.service=jaeger"
+      - "monitoring.type=tracing"
+
+  # ---------------------------------------------------------------------------
+  # Node Exporter - System Metrics
+  # ---------------------------------------------------------------------------
+  node-exporter:
+    image: prom/node-exporter:v1.6.0
+    container_name: learning-coach-node-exporter
+    command:
+      - '--path.rootfs=/host'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+    volumes:
+      - /:/host:ro,rslave
+    pid: host
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+    labels:
+      - "monitoring.service=node-exporter"
+      - "monitoring.type=system-metrics"
+
+  # ---------------------------------------------------------------------------
+  # cAdvisor - Container Metrics
+  # ---------------------------------------------------------------------------
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.0
+    container_name: learning-coach-cadvisor
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+    labels:
+      - "monitoring.service=cadvisor"
+      - "monitoring.type=container-metrics"
+
+  # ---------------------------------------------------------------------------
+  # AlertManager - Alert Management
+  # ---------------------------------------------------------------------------
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    container_name: learning-coach-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/config.yml:ro
+      - alertmanager_data:/alertmanager
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring-network
+    restart: unless-stopped
+    labels:
+      - "monitoring.service=alertmanager"
+      - "monitoring.type=alerting"
+
+  # ---------------------------------------------------------------------------
+  # Enhanced Service Configurations with Monitoring
+  # ---------------------------------------------------------------------------
+  
+  # Frontend with monitoring
+  frontend:
+    environment:
+      # Monitoring configuration
+      - MONITORING_ENABLED=true
+      - METRICS_ENDPOINT=/metrics
+      - HEALTH_CHECK_ENDPOINT=/health
+      - PROMETHEUS_METRICS=true
+      
+      # Logging configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=json
+      - STRUCTURED_LOGGING=true
+      
+      # Tracing configuration
+      - TRACING_ENABLED=true
+      - JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+      - TRACE_SAMPLING_RATE=0.1
+    
+    labels:
+      # Prometheus scraping
+      - "prometheus.io/scrape=true"
+      - "prometheus.io/port=3000"
+      - "prometheus.io/path=/metrics"
+      
+      # Logging
+      - "logging.driver=loki"
+      - "logging.loki.url=http://loki:3100/loki/api/v1/push"
+    
+    networks:
+      - learning-coach-network
+      - monitoring-network
+
+  # Coach Service with monitoring
+  coach-service:
+    environment:
+      # Monitoring configuration
+      - MONITORING_ENABLED=true
+      - METRICS_ENABLED=true
+      - PROMETHEUS_METRICS_PORT=8001
+      
+      # Logging configuration
+      - STRUCTURED_LOGGING=true
+      - LOG_CORRELATION_ID=true
+      - LOG_PERFORMANCE_METRICS=true
+      
+      # Tracing configuration
+      - OPENTELEMETRY_ENABLED=true
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+      - TRACE_SAMPLING_RATE=0.1
+      
+      # Health checks
+      - HEALTH_CHECK_ENABLED=true
+      - READINESS_CHECK_ENABLED=true
+      - LIVENESS_CHECK_ENABLED=true
+    
+    labels:
+      # Prometheus scraping
+      - "prometheus.io/scrape=true"
+      - "prometheus.io/port=8001"
+      - "prometheus.io/path=/metrics"
+      
+      # Logging
+      - "logging.driver=loki"
+      - "logging.loki.url=http://loki:3100/loki/api/v1/push"
+    
+    networks:
+      - learning-coach-network
+      - monitoring-network
+
+  # Runner Service with enhanced monitoring
+  runner-service:
+    environment:
+      # Security monitoring
+      - SECURITY_MONITORING=true
+      - EXECUTION_MONITORING=true
+      - ANOMALY_DETECTION=true
+      
+      # Performance monitoring
+      - PERFORMANCE_METRICS=true
+      - RESOURCE_MONITORING=true
+      - EXECUTION_TRACING=true
+      
+      # Alerting
+      - ALERT_ON_SUSPICIOUS_CODE=true
+      - ALERT_ON_RESOURCE_LIMITS=true
+      - ALERT_ON_EXECUTION_FAILURES=true
+    
+    labels:
+      # Enhanced monitoring for security-critical service
+      - "prometheus.io/scrape=true"
+      - "prometheus.io/port=8001"
+      - "prometheus.io/path=/metrics"
+      - "monitoring.security.enhanced=true"
+      - "monitoring.alerts.critical=true"
+    
+    networks:
+      - learning-coach-network
+      - monitoring-network
+
+# =============================================================================
+# Monitoring Networks
+# =============================================================================
+networks:
+  monitoring-network:
+    driver: bridge
+    name: learning-coach-monitoring
+    labels:
+      - "monitoring.network=true"
+
+# =============================================================================
+# Monitoring Volumes
+# =============================================================================
+volumes:
+  prometheus_data:
+    driver: local
+    name: learning-coach-prometheus-data
+    labels:
+      - "monitoring.volume=prometheus"
+  
+  grafana_data:
+    driver: local
+    name: learning-coach-grafana-data
+    labels:
+      - "monitoring.volume=grafana"
+  
+  loki_data:
+    driver: local
+    name: learning-coach-loki-data
+    labels:
+      - "monitoring.volume=loki"
+  
+  alertmanager_data:
+    driver: local
+    name: learning-coach-alertmanager-data
+    labels:
+      - "monitoring.volume=alertmanager"

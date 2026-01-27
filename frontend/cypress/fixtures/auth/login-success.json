@@ -1,0 +1,12 @@
+{
+  "user": {
+    "id": "user-123",
+    "email": "test@example.com",
+    "name": "Test User",
+    "avatar": "https://example.com/avatar.jpg",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-15T10:00:00Z"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token",
+  "expiresAt": "2024-01-16T10:00:00Z"
+}

@@ -1,0 +1,376 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  NODE_VERSION: '20.x'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/frontend
+
+jobs:
+  # Build and Test
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci --prefer-offline --no-audit
+      
+    - name: Run quality checks
+      working-directory: frontend
+      run: |
+        npm run type-check
+        npm run lint
+        npm run test:ci
+        
+    - name: Build application
+      working-directory: frontend
+      run: |
+        npm run build
+        
+        # Generate build info
+        echo "{
+          \"version\": \"${{ github.sha }}\",
+          \"buildTime\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+          \"branch\": \"${{ github.ref_name }}\",
+          \"commit\": \"${{ github.sha }}\",
+          \"tag\": \"${{ github.ref_type == 'tag' && github.ref_name || '' }}\"
+        }" > dist/build-info.json
+        
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: frontend
+        file: frontend/Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          frontend/dist/
+          frontend/storybook-static/
+        retention-days: 30
+
+  # Security Scan of Built Image
+  security-scan-image:
+    name: Security Scan Image
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ needs.build.outputs.image-tag }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, security-scan-image]
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'staging'
+    environment:
+      name: staging
+      url: https://staging.agentic-learning-coach.com
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+        
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+        
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region us-west-2 --name staging-cluster
+        
+    - name: Deploy to staging
+      run: |
+        # Update deployment with new image
+        kubectl set image deployment/frontend-deployment \
+          frontend=${{ needs.build.outputs.image-tag }} \
+          -n staging
+          
+        # Wait for rollout to complete
+        kubectl rollout status deployment/frontend-deployment -n staging --timeout=300s
+        
+        # Verify deployment
+        kubectl get pods -n staging -l app=frontend
+        
+    - name: Run smoke tests
+      run: |
+        # Wait for service to be ready
+        sleep 30
+        
+        # Basic health check
+        curl -f https://staging.agentic-learning-coach.com/health || exit 1
+        
+        # API health check
+        curl -f https://staging.agentic-learning-coach.com/api/health || exit 1
+        
+    - name: Run E2E tests against staging
+      working-directory: frontend
+      run: |
+        npm ci --prefer-offline --no-audit
+        npm run test:e2e:staging
+      env:
+        CYPRESS_baseUrl: https://staging.agentic-learning-coach.com
+        
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        text: |
+          Staging deployment ${{ job.status }}
+          Environment: staging
+          Image: ${{ needs.build.outputs.image-tag }}
+          Commit: ${{ github.sha }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, security-scan-image, deploy-staging]
+    if: github.ref_type == 'tag' || github.event.inputs.environment == 'production'
+    environment:
+      name: production
+      url: https://agentic-learning-coach.com
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+        
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+        
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region us-west-2 --name production-cluster
+        
+    - name: Create deployment backup
+      run: |
+        # Backup current deployment
+        kubectl get deployment frontend-deployment -n production -o yaml > deployment-backup.yaml
+        
+        # Store current image for rollback
+        CURRENT_IMAGE=$(kubectl get deployment frontend-deployment -n production -o jsonpath='{.spec.template.spec.containers[0].image}')
+        echo "ROLLBACK_IMAGE=$CURRENT_IMAGE" >> $GITHUB_ENV
+        
+    - name: Deploy to production
+      run: |
+        # Blue-green deployment strategy
+        kubectl set image deployment/frontend-deployment \
+          frontend=${{ needs.build.outputs.image-tag }} \
+          -n production
+          
+        # Wait for rollout to complete
+        kubectl rollout status deployment/frontend-deployment -n production --timeout=600s
+        
+    - name: Run production smoke tests
+      run: |
+        # Wait for service to be ready
+        sleep 60
+        
+        # Comprehensive health checks
+        curl -f https://agentic-learning-coach.com/health || exit 1
+        curl -f https://agentic-learning-coach.com/api/health || exit 1
+        
+        # Performance check
+        RESPONSE_TIME=$(curl -o /dev/null -s -w '%{time_total}' https://agentic-learning-coach.com/)
+        if (( $(echo "$RESPONSE_TIME > 2.0" | bc -l) )); then
+          echo "Response time $RESPONSE_TIME seconds is too slow"
+          exit 1
+        fi
+        
+    - name: Run critical E2E tests
+      working-directory: frontend
+      run: |
+        npm ci --prefer-offline --no-audit
+        npm run test:e2e:production:critical
+      env:
+        CYPRESS_baseUrl: https://agentic-learning-coach.com
+        
+    - name: Update monitoring dashboards
+      run: |
+        # Update deployment annotations for monitoring
+        kubectl annotate deployment frontend-deployment \
+          deployment.kubernetes.io/revision-history-limit=10 \
+          app.kubernetes.io/version=${{ github.ref_name }} \
+          -n production --overwrite
+          
+    - name: Rollback on failure
+      if: failure()
+      run: |
+        echo "Deployment failed, rolling back..."
+        kubectl set image deployment/frontend-deployment \
+          frontend=${{ env.ROLLBACK_IMAGE }} \
+          -n production
+        kubectl rollout status deployment/frontend-deployment -n production --timeout=300s
+        
+    - name: Notify deployment
+      uses: 8398a7/action-slack@v3
+      if: always()
+      with:
+        status: ${{ job.status }}
+        channel: '#deployments'
+        text: |
+          Production deployment ${{ job.status }}
+          Environment: production
+          Image: ${{ needs.build.outputs.image-tag }}
+          Version: ${{ github.ref_name }}
+          Commit: ${{ github.sha }}
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Post-deployment monitoring
+  post-deployment-monitoring:
+    name: Post-deployment Monitoring
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: success()
+    
+    steps:
+    - name: Setup monitoring alerts
+      run: |
+        # Enable enhanced monitoring for 24 hours after deployment
+        curl -X POST "${{ secrets.DATADOG_API_URL }}/api/v1/monitor" \
+          -H "Content-Type: application/json" \
+          -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+          -H "DD-APPLICATION-KEY: ${{ secrets.DATADOG_APP_KEY }}" \
+          -d '{
+            "type": "metric alert",
+            "query": "avg(last_5m):avg:nginx.net.request_per_s{env:production} > 1000",
+            "name": "High traffic after deployment",
+            "message": "Traffic spike detected after deployment",
+            "tags": ["deployment:${{ github.sha }}"],
+            "options": {
+              "thresholds": {
+                "critical": 1000,
+                "warning": 800
+              },
+              "notify_no_data": true,
+              "no_data_timeframe": 10
+            }
+          }'
+          
+    - name: Schedule performance monitoring
+      run: |
+        # Schedule Lighthouse audits for next 24 hours
+        curl -X POST "${{ secrets.LIGHTHOUSE_CI_URL }}/api/projects/${{ secrets.LIGHTHOUSE_PROJECT_ID }}/builds" \
+          -H "Authorization: Bearer ${{ secrets.LIGHTHOUSE_CI_TOKEN }}" \
+          -d '{
+            "branch": "${{ github.ref_name }}",
+            "commitSha": "${{ github.sha }}",
+            "runAt": "'$(date -d "+1 hour" -u +%Y-%m-%dT%H:%M:%SZ)'"
+          }'
+
+  # Cleanup
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always()
+    
+    steps:
+    - name: Cleanup old images
+      run: |
+        # Keep only last 10 images
+        echo "Cleaning up old container images..."
+        # This would typically be handled by your container registry's retention policy
+        
+    - name: Archive deployment artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-artifacts-${{ github.sha }}
+        path: |
+          deployment-backup.yaml
+        retention-days: 90

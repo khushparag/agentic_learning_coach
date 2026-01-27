@@ -1,0 +1,54 @@
+{
+  "staging": {
+    "url": "https://staging.agentic-learning-coach.com",
+    "healthEndpoint": "/health",
+    "smokeTests": [
+      "/",
+      "/login",
+      "/dashboard",
+      "/exercises",
+      "/api/health"
+    ],
+    "rollbackOnFailure": true,
+    "maxRollbackAttempts": 3,
+    "performanceThresholds": {
+      "responseTime": 2000,
+      "lighthouse": {
+        "performance": 85,
+        "accessibility": 90,
+        "bestPractices": 85,
+        "seo": 85
+      }
+    }
+  },
+  "production": {
+    "url": "https://agentic-learning-coach.com",
+    "healthEndpoint": "/health",
+    "smokeTests": [
+      "/",
+      "/login",
+      "/dashboard",
+      "/exercises",
+      "/learning-path",
+      "/api/health",
+      "/api/profile"
+    ],
+    "rollbackOnFailure": true,
+    "maxRollbackAttempts": 3,
+    "requiresApproval": true,
+    "performanceThresholds": {
+      "responseTime": 1500,
+      "lighthouse": {
+        "performance": 90,
+        "accessibility": 95,
+        "bestPractices": 90,
+        "seo": 90
+      }
+    },
+    "criticalUserFlows": [
+      "authentication",
+      "exercise-submission",
+      "dashboard-load"
+    ]
+  }
+}

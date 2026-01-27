@@ -1,0 +1,350 @@
+# =============================================================================
+# Agentic Learning Coach - Docker Compose Configuration
+# =============================================================================
+# This configuration defines all services required for the Learning Coach system.
+# 
+# Services:
+#   - postgres: PostgreSQL database (system of record)
+#   - redis: Redis cache for session management
+#   - coach-service: Main Learning Coach API service
+#   - runner-service: Secure code execution service
+#   - qdrant: Vector database for semantic resource retrieval
+#
+# Usage:
+#   Development: docker-compose up -d
+#   Production:  docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database - System of Record
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: learning-coach-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-learning_coach}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Performance tuning for development
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-learning_coach}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - learning-coach-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # Redis Cache - Session Management and Caching
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: learning-coach-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - learning-coach-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # Coach Service - Main Learning Coach API
+  # ---------------------------------------------------------------------------
+  coach-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: learning-coach-service
+    environment:
+      # Database configuration
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-learning_coach}
+      # Redis configuration
+      - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Runner service configuration
+      - RUNNER_SERVICE_URL=http://runner-service:8001
+      # Qdrant configuration
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      # Application configuration
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEBUG=${DEBUG:-true}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      # JWT configuration
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-jwt-secret-key-change-in-production}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES:-30}
+      # LLM Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-3-haiku-20240307}
+      # Migration configuration
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
+    ports:
+      - "${COACH_PORT:-8000}:8000"
+    volumes:
+      - .:/app
+      - /app/.venv  # Exclude virtual environment from bind mount
+      - /app/__pycache__  # Exclude pycache
+      - /app/.pytest_cache  # Exclude pytest cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - learning-coach-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ---------------------------------------------------------------------------
+  # Runner Service - Secure Code Execution
+  # ---------------------------------------------------------------------------
+  runner-service:
+    build:
+      context: ./runner-service
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: learning-coach-runner
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DEBUG=${DEBUG:-true}
+      # Code execution limits
+      - MAX_EXECUTION_TIME=${MAX_EXECUTION_TIME:-10}
+      - MAX_MEMORY_MB=${MAX_MEMORY_MB:-256}
+      - MAX_CODE_LENGTH=${MAX_CODE_LENGTH:-50000}
+      # Security settings
+      - ENABLE_NETWORK=${ENABLE_NETWORK:-false}
+      - ALLOWED_LANGUAGES=${ALLOWED_LANGUAGES:-python,javascript,typescript}
+    ports:
+      - "${RUNNER_PORT:-8001}:8001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # For Docker-in-Docker (read-only)
+      - runner_temp:/tmp/runner  # Temporary execution directory
+    # Note: privileged mode is required for Docker-in-Docker
+    # In production, consider using a dedicated execution environment
+    privileged: true
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - learning-coach-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ---------------------------------------------------------------------------
+  # Qdrant - Vector Database for Semantic Resource Retrieval
+  # ---------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:v1.7.0
+    container_name: learning-coach-qdrant
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+      - qdrant_snapshots:/qdrant/snapshots
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # Performance tuning
+      - QDRANT__STORAGE__ON_DISK_PAYLOAD=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - learning-coach-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # Frontend - React Web Application
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+        - VITE_API_BASE_URL=http://localhost:${COACH_PORT:-8002}
+        - VITE_WS_URL=ws://localhost:${COACH_PORT:-8002}
+        - VITE_APP_ENV=${ENVIRONMENT:-development}
+        - VITE_DEBUG=${DEBUG:-true}
+    container_name: learning-coach-frontend
+    environment:
+      # API Configuration
+      - VITE_API_BASE_URL=http://localhost:${COACH_PORT:-8002}
+      - VITE_WS_URL=ws://localhost:${COACH_PORT:-8002}
+      - VITE_WS_BASE_URL=ws://localhost:${COACH_PORT:-8002}
+      
+      # Application Configuration
+      - VITE_APP_ENV=${ENVIRONMENT:-development}
+      - VITE_APP_NAME=Agentic Learning Coach
+      - VITE_APP_VERSION=1.0.0
+      - VITE_DEBUG=${DEBUG:-true}
+      
+      # Feature Flags
+      - VITE_FEATURE_SOCIAL_LEARNING=${FEATURE_SOCIAL_LEARNING:-true}
+      - VITE_FEATURE_GAMIFICATION=${FEATURE_GAMIFICATION:-true}
+      - VITE_FEATURE_ANALYTICS=${FEATURE_ANALYTICS:-true}
+      - VITE_FEATURE_REAL_TIME_UPDATES=${FEATURE_REAL_TIME_UPDATES:-true}
+      - VITE_FEATURE_CODE_SHARING=${FEATURE_CODE_SHARING:-true}
+      - VITE_FEATURE_PEER_CHALLENGES=${FEATURE_PEER_CHALLENGES:-true}
+      - VITE_FEATURE_WEBSOCKET_RECONNECT=${FEATURE_WEBSOCKET_RECONNECT:-true}
+      - VITE_FEATURE_LIVE_COLLABORATION=${FEATURE_LIVE_COLLABORATION:-true}
+      - VITE_FEATURE_REAL_TIME_LEADERBOARD=${FEATURE_REAL_TIME_LEADERBOARD:-true}
+      
+      # Development Configuration
+      - VITE_USE_MOCK_DATA=${USE_MOCK_DATA:-false}
+      - VITE_ENABLE_QUERY_DEVTOOLS=${ENABLE_QUERY_DEVTOOLS:-true}
+      - VITE_ENABLE_REDUX_DEVTOOLS=${ENABLE_REDUX_DEVTOOLS:-true}
+      
+      # Performance Configuration
+      - VITE_API_TIMEOUT=${API_TIMEOUT:-30000}
+      - VITE_MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
+      - VITE_IMAGE_QUALITY=${IMAGE_QUALITY:-80}
+      
+      # UI Configuration
+      - VITE_DEFAULT_THEME=${DEFAULT_THEME:-system}
+      - VITE_ENABLE_ANIMATIONS=${ENABLE_ANIMATIONS:-true}
+      - VITE_DEFAULT_LOCALE=${DEFAULT_LOCALE:-en-US}
+      
+      # Code Editor Configuration
+      - VITE_DEFAULT_LANGUAGE=${DEFAULT_LANGUAGE:-javascript}
+      - VITE_EDITOR_MINIMAP=${EDITOR_MINIMAP:-false}
+      - VITE_EDITOR_THEME=${EDITOR_THEME:-vs-dark}
+      
+      # Learning Configuration
+      - VITE_DEFAULT_SESSION_LENGTH=${DEFAULT_SESSION_LENGTH:-60}
+      - VITE_MAX_HINTS_PER_EXERCISE=${MAX_HINTS_PER_EXERCISE:-3}
+      - VITE_AUTOSAVE_INTERVAL=${AUTOSAVE_INTERVAL:-30000}
+      
+      # Gamification Configuration
+      - VITE_ENABLE_XP_ANIMATIONS=${ENABLE_XP_ANIMATIONS:-true}
+      - VITE_ENABLE_ACHIEVEMENT_NOTIFICATIONS=${ENABLE_ACHIEVEMENT_NOTIFICATIONS:-true}
+      - VITE_STREAK_REMINDER_TIME=${STREAK_REMINDER_TIME:-20:00}
+      
+      # Social Features Configuration
+      - VITE_MAX_SOLUTIONS_PER_DAY=${MAX_SOLUTIONS_PER_DAY:-10}
+      - VITE_MAX_CHALLENGES_PER_DAY=${MAX_CHALLENGES_PER_DAY:-5}
+      - VITE_MAX_STUDY_GROUP_MEMBERS=${MAX_STUDY_GROUP_MEMBERS:-20}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Exclude node_modules from bind mount
+      - /app/dist  # Exclude dist from bind mount
+      - /app/.vite  # Exclude vite cache
+    depends_on:
+      coach-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - learning-coach-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+# =============================================================================
+# Volumes - Persistent Data Storage
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+    name: learning-coach-postgres-data
+  redis_data:
+    driver: local
+    name: learning-coach-redis-data
+  qdrant_data:
+    driver: local
+    name: learning-coach-qdrant-data
+  qdrant_snapshots:
+    driver: local
+    name: learning-coach-qdrant-snapshots
+  runner_temp:
+    driver: local
+    name: learning-coach-runner-temp
+
+# =============================================================================
+# Networks - Service Communication
+# =============================================================================
+networks:
+  learning-coach-network:
+    driver: bridge
+    name: learning-coach-network
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16

@@ -1,0 +1,45 @@
+{
+  "id": "submission-123",
+  "exerciseId": "123",
+  "status": "passed",
+  "score": 95,
+  "executionTime": 1250,
+  "feedback": {
+    "passed": true,
+    "message": "Excellent work! Your solution correctly implements all the required array methods.",
+    "testResults": [
+      {
+        "name": "doubleNumbers test",
+        "passed": true,
+        "expected": "[2, 4, 6, 8, 10]",
+        "actual": "[2, 4, 6, 8, 10]",
+        "message": "✅ Correctly doubles all numbers"
+      },
+      {
+        "name": "filterEvenNumbers test", 
+        "passed": true,
+        "expected": "[2, 4, 6]",
+        "actual": "[2, 4, 6]",
+        "message": "✅ Correctly filters even numbers"
+      },
+      {
+        "name": "sumNumbers test",
+        "passed": true,
+        "expected": "15",
+        "actual": "15", 
+        "message": "✅ Correctly calculates sum"
+      }
+    ],
+    "suggestions": [
+      "Great use of array methods! Your code is clean and functional.",
+      "Consider exploring more advanced array methods like flatMap() and some()."
+    ],
+    "codeQuality": {
+      "readability": 9,
+      "efficiency": 8,
+      "bestPractices": 9
+    }
+  },
+  "submittedAt": "2024-01-15T10:30:00Z",
+  "evaluatedAt": "2024-01-15T10:30:02Z"
+}

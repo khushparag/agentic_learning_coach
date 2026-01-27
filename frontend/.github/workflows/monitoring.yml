@@ -1,0 +1,437 @@
+name: Monitoring & Alerting
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Every 15 minutes
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to monitor'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - staging
+        - production
+        - all
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  # Health Check Monitoring
+  health-monitoring:
+    name: Health Check Monitoring
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        environment: 
+          - ${{ github.event.inputs.environment == 'all' && 'staging' || github.event.inputs.environment || 'production' }}
+          - ${{ github.event.inputs.environment == 'all' && 'production' || '' }}
+        exclude:
+          - environment: ''
+    
+    steps:
+    - name: Set environment URLs
+      run: |
+        case "${{ matrix.environment }}" in
+          staging)
+            echo "BASE_URL=https://staging.agentic-learning-coach.com" >> $GITHUB_ENV
+            echo "API_URL=https://staging-api.agentic-learning-coach.com" >> $GITHUB_ENV
+            ;;
+          production)
+            echo "BASE_URL=https://agentic-learning-coach.com" >> $GITHUB_ENV
+            echo "API_URL=https://api.agentic-learning-coach.com" >> $GITHUB_ENV
+            ;;
+        esac
+        
+    - name: Frontend health check
+      run: |
+        echo "Checking frontend health for ${{ matrix.environment }}..."
+        
+        # Basic connectivity
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code},%{time_total},%{size_download}" $BASE_URL/health)
+        HTTP_CODE=$(echo $RESPONSE | cut -d',' -f1)
+        RESPONSE_TIME=$(echo $RESPONSE | cut -d',' -f2)
+        SIZE=$(echo $RESPONSE | cut -d',' -f3)
+        
+        echo "HTTP_CODE=$HTTP_CODE" >> $GITHUB_ENV
+        echo "RESPONSE_TIME=$RESPONSE_TIME" >> $GITHUB_ENV
+        echo "RESPONSE_SIZE=$SIZE" >> $GITHUB_ENV
+        
+        # Check if healthy
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "❌ Frontend health check failed: HTTP $HTTP_CODE"
+          exit 1
+        fi
+        
+        # Check response time (should be < 2 seconds)
+        if (( $(echo "$RESPONSE_TIME > 2.0" | bc -l) )); then
+          echo "⚠️ Slow response time: ${RESPONSE_TIME}s"
+        fi
+        
+        echo "✅ Frontend health check passed: HTTP $HTTP_CODE, ${RESPONSE_TIME}s"
+        
+    - name: API health check
+      run: |
+        echo "Checking API health for ${{ matrix.environment }}..."
+        
+        # API health endpoint
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code},%{time_total}" $API_URL/health)
+        HTTP_CODE=$(echo $RESPONSE | cut -d',' -f1)
+        RESPONSE_TIME=$(echo $RESPONSE | cut -d',' -f2)
+        
+        echo "API_HTTP_CODE=$HTTP_CODE" >> $GITHUB_ENV
+        echo "API_RESPONSE_TIME=$RESPONSE_TIME" >> $GITHUB_ENV
+        
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "❌ API health check failed: HTTP $HTTP_CODE"
+          exit 1
+        fi
+        
+        echo "✅ API health check passed: HTTP $HTTP_CODE, ${RESPONSE_TIME}s"
+        
+    - name: Critical user flows check
+      run: |
+        echo "Testing critical user flows for ${{ matrix.environment }}..."
+        
+        # Test login page
+        LOGIN_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" $BASE_URL/login)
+        if [ "$LOGIN_RESPONSE" != "200" ]; then
+          echo "❌ Login page failed: HTTP $LOGIN_RESPONSE"
+          exit 1
+        fi
+        
+        # Test dashboard (should redirect to login if not authenticated)
+        DASHBOARD_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" $BASE_URL/dashboard)
+        if [ "$DASHBOARD_RESPONSE" != "200" ] && [ "$DASHBOARD_RESPONSE" != "302" ] && [ "$DASHBOARD_RESPONSE" != "401" ]; then
+          echo "❌ Dashboard check failed: HTTP $DASHBOARD_RESPONSE"
+          exit 1
+        fi
+        
+        echo "✅ Critical user flows check passed"
+        
+    - name: Send metrics to monitoring system
+      if: always()
+      run: |
+        # Send metrics to DataDog (or your monitoring system)
+        curl -X POST "https://api.datadoghq.com/api/v1/series" \
+          -H "Content-Type: application/json" \
+          -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+          -d '{
+            "series": [
+              {
+                "metric": "frontend.health.response_time",
+                "points": [['$(date +%s)', '${{ env.RESPONSE_TIME }}']],
+                "tags": ["env:${{ matrix.environment }}", "service:frontend"]
+              },
+              {
+                "metric": "frontend.health.status",
+                "points": [['$(date +%s)', '${{ env.HTTP_CODE == '200' && '1' || '0' }}']],
+                "tags": ["env:${{ matrix.environment }}", "service:frontend"]
+              },
+              {
+                "metric": "api.health.response_time", 
+                "points": [['$(date +%s)', '${{ env.API_RESPONSE_TIME }}']],
+                "tags": ["env:${{ matrix.environment }}", "service:api"]
+              },
+              {
+                "metric": "api.health.status",
+                "points": [['$(date +%s)', '${{ env.API_HTTP_CODE == '200' && '1' || '0' }}']],
+                "tags": ["env:${{ matrix.environment }}", "service:api"]
+              }
+            ]
+          }' || echo "Failed to send metrics to DataDog"
+
+  # Performance Monitoring
+  performance-monitoring:
+    name: Performance Monitoring
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.environment
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Install Lighthouse CI
+      run: npm install -g @lhci/cli@0.12.x
+      
+    - name: Run Lighthouse audit on production
+      run: |
+        lhci autorun \
+          --collect.url=https://agentic-learning-coach.com \
+          --collect.url=https://agentic-learning-coach.com/login \
+          --collect.url=https://agentic-learning-coach.com/dashboard \
+          --upload.target=temporary-public-storage
+      env:
+        LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+        
+    - name: Performance budget check
+      run: |
+        # Extract performance metrics
+        PERFORMANCE_SCORE=$(cat .lighthouseci/lhr-*.json | jq '.categories.performance.score * 100' | head -1)
+        ACCESSIBILITY_SCORE=$(cat .lighthouseci/lhr-*.json | jq '.categories.accessibility.score * 100' | head -1)
+        BEST_PRACTICES_SCORE=$(cat .lighthouseci/lhr-*.json | jq '.categories["best-practices"].score * 100' | head -1)
+        SEO_SCORE=$(cat .lighthouseci/lhr-*.json | jq '.categories.seo.score * 100' | head -1)
+        
+        echo "Performance: $PERFORMANCE_SCORE"
+        echo "Accessibility: $ACCESSIBILITY_SCORE" 
+        echo "Best Practices: $BEST_PRACTICES_SCORE"
+        echo "SEO: $SEO_SCORE"
+        
+        # Check thresholds
+        if (( $(echo "$PERFORMANCE_SCORE < 90" | bc -l) )); then
+          echo "⚠️ Performance score below threshold: $PERFORMANCE_SCORE < 90"
+        fi
+        
+        if (( $(echo "$ACCESSIBILITY_SCORE < 95" | bc -l) )); then
+          echo "⚠️ Accessibility score below threshold: $ACCESSIBILITY_SCORE < 95"
+        fi
+        
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-monitoring-reports
+        path: .lighthouseci/
+        retention-days: 7
+
+  # Error Rate Monitoring
+  error-monitoring:
+    name: Error Rate Monitoring
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Check error rates from logs
+      run: |
+        # Query error rates from your logging system
+        # This is a placeholder - replace with your actual log aggregation service
+        
+        echo "Checking error rates from monitoring system..."
+        
+        # Example: Query DataDog for error rates
+        ERROR_RATE=$(curl -s -G "https://api.datadoghq.com/api/v1/query" \
+          -H "DD-API-KEY: ${{ secrets.DATADOG_API_KEY }}" \
+          -H "DD-APPLICATION-KEY: ${{ secrets.DATADOG_APP_KEY }}" \
+          -d "query=sum:nginx.net.request_per_s{status:5xx}.as_rate()/sum:nginx.net.request_per_s{*}.as_rate()" \
+          -d "from=$(date -d '1 hour ago' +%s)" \
+          -d "to=$(date +%s)" | jq '.series[0].pointlist[-1][1] // 0')
+          
+        echo "Current error rate: $ERROR_RATE"
+        
+        # Alert if error rate > 1%
+        if (( $(echo "$ERROR_RATE > 0.01" | bc -l) )); then
+          echo "🚨 High error rate detected: $ERROR_RATE"
+          echo "ERROR_ALERT=true" >> $GITHUB_ENV
+        else
+          echo "✅ Error rate within acceptable limits"
+          echo "ERROR_ALERT=false" >> $GITHUB_ENV
+        fi
+        
+    - name: Create error rate alert
+      if: env.ERROR_ALERT == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const title = `🚨 High Error Rate Alert - ${new Date().toISOString()}`;
+          const body = `
+          ## High Error Rate Detected
+          
+          The application is experiencing a higher than normal error rate.
+          
+          **Current Error Rate:** ${process.env.ERROR_RATE}
+          **Threshold:** 1%
+          **Time:** ${new Date().toISOString()}
+          
+          ### Immediate Actions Required
+          1. Check application logs for error patterns
+          2. Verify system resources (CPU, memory, disk)
+          3. Check database connectivity and performance
+          4. Review recent deployments
+          5. Consider rollback if necessary
+          
+          ### Monitoring Links
+          - [DataDog Dashboard](https://app.datadoghq.com/dashboard/your-dashboard-id)
+          - [Application Logs](https://your-logging-system.com)
+          - [Infrastructure Metrics](https://your-monitoring-system.com)
+          
+          **Auto-generated by monitoring workflow**
+          `;
+          
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: ['alert', 'high-priority', 'production-issue']
+          });
+
+  # SSL Certificate Monitoring
+  ssl-monitoring:
+    name: SSL Certificate Monitoring
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Check SSL certificates
+      run: |
+        echo "Checking SSL certificates..."
+        
+        # Check production SSL
+        PROD_EXPIRY=$(echo | openssl s_client -servername agentic-learning-coach.com -connect agentic-learning-coach.com:443 2>/dev/null | openssl x509 -noout -enddate | cut -d= -f2)
+        PROD_EXPIRY_EPOCH=$(date -d "$PROD_EXPIRY" +%s)
+        CURRENT_EPOCH=$(date +%s)
+        PROD_DAYS_LEFT=$(( (PROD_EXPIRY_EPOCH - CURRENT_EPOCH) / 86400 ))
+        
+        echo "Production SSL expires in $PROD_DAYS_LEFT days"
+        
+        # Check staging SSL
+        STAGING_EXPIRY=$(echo | openssl s_client -servername staging.agentic-learning-coach.com -connect staging.agentic-learning-coach.com:443 2>/dev/null | openssl x509 -noout -enddate | cut -d= -f2)
+        STAGING_EXPIRY_EPOCH=$(date -d "$STAGING_EXPIRY" +%s)
+        STAGING_DAYS_LEFT=$(( (STAGING_EXPIRY_EPOCH - CURRENT_EPOCH) / 86400 ))
+        
+        echo "Staging SSL expires in $STAGING_DAYS_LEFT days"
+        
+        # Alert if certificates expire within 30 days
+        if [ $PROD_DAYS_LEFT -lt 30 ] || [ $STAGING_DAYS_LEFT -lt 30 ]; then
+          echo "SSL_EXPIRY_ALERT=true" >> $GITHUB_ENV
+          echo "PROD_DAYS_LEFT=$PROD_DAYS_LEFT" >> $GITHUB_ENV
+          echo "STAGING_DAYS_LEFT=$STAGING_DAYS_LEFT" >> $GITHUB_ENV
+        else
+          echo "SSL_EXPIRY_ALERT=false" >> $GITHUB_ENV
+        fi
+        
+    - name: Create SSL expiry alert
+      if: env.SSL_EXPIRY_ALERT == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const title = `🔒 SSL Certificate Expiry Warning`;
+          const body = `
+          ## SSL Certificate Expiry Warning
+          
+          One or more SSL certificates are expiring soon:
+          
+          - **Production:** ${process.env.PROD_DAYS_LEFT} days remaining
+          - **Staging:** ${process.env.STAGING_DAYS_LEFT} days remaining
+          
+          ### Action Required
+          1. Renew SSL certificates before expiry
+          2. Update certificate configuration
+          3. Test certificate renewal process
+          4. Verify automatic renewal is working
+          
+          **Auto-generated by SSL monitoring workflow**
+          `;
+          
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: ['ssl', 'security', 'maintenance']
+          });
+
+  # Synthetic Transaction Monitoring
+  synthetic-monitoring:
+    name: Synthetic Transaction Monitoring
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        
+    - name: Install Playwright
+      run: |
+        npm install -g playwright
+        playwright install chromium
+        
+    - name: Run synthetic transactions
+      run: |
+        cat > synthetic-test.js << 'EOF'
+        const { chromium } = require('playwright');
+        
+        (async () => {
+          const browser = await chromium.launch();
+          const page = await browser.newPage();
+          
+          try {
+            // Test 1: Homepage load
+            console.log('Testing homepage load...');
+            const start = Date.now();
+            await page.goto('https://agentic-learning-coach.com', { waitUntil: 'networkidle' });
+            const loadTime = Date.now() - start;
+            console.log(`Homepage loaded in ${loadTime}ms`);
+            
+            if (loadTime > 3000) {
+              console.error('❌ Homepage load time too slow');
+              process.exit(1);
+            }
+            
+            // Test 2: Login page
+            console.log('Testing login page...');
+            await page.goto('https://agentic-learning-coach.com/login');
+            await page.waitForSelector('input[type="email"]', { timeout: 5000 });
+            console.log('✅ Login page loaded successfully');
+            
+            // Test 3: API health
+            console.log('Testing API health...');
+            const response = await page.request.get('https://api.agentic-learning-coach.com/health');
+            if (response.status() !== 200) {
+              console.error('❌ API health check failed');
+              process.exit(1);
+            }
+            console.log('✅ API health check passed');
+            
+            console.log('✅ All synthetic tests passed');
+            
+          } catch (error) {
+            console.error('❌ Synthetic test failed:', error.message);
+            process.exit(1);
+          } finally {
+            await browser.close();
+          }
+        })();
+        EOF
+        
+        node synthetic-test.js
+
+  # Monitoring Summary
+  monitoring-summary:
+    name: Monitoring Summary
+    runs-on: ubuntu-latest
+    needs: [health-monitoring, performance-monitoring, error-monitoring, ssl-monitoring, synthetic-monitoring]
+    if: always()
+    
+    steps:
+    - name: Generate monitoring summary
+      run: |
+        echo "# Monitoring Summary - $(date -u)" > monitoring-summary.md
+        echo "" >> monitoring-summary.md
+        echo "## Service Status" >> monitoring-summary.md
+        echo "" >> monitoring-summary.md
+        echo "| Check | Status |" >> monitoring-summary.md
+        echo "|-------|--------|" >> monitoring-summary.md
+        echo "| Health Monitoring | ${{ needs.health-monitoring.result == 'success' && '✅ Healthy' || '❌ Issues Detected' }} |" >> monitoring-summary.md
+        echo "| Performance Monitoring | ${{ needs.performance-monitoring.result == 'success' && '✅ Good' || '⚠️ Degraded' }} |" >> monitoring-summary.md
+        echo "| Error Monitoring | ${{ needs.error-monitoring.result == 'success' && '✅ Normal' || '🚨 High Error Rate' }} |" >> monitoring-summary.md
+        echo "| SSL Monitoring | ${{ needs.ssl-monitoring.result == 'success' && '✅ Valid' || '⚠️ Expiring Soon' }} |" >> monitoring-summary.md
+        echo "| Synthetic Monitoring | ${{ needs.synthetic-monitoring.result == 'success' && '✅ Passing' || '❌ Failing' }} |" >> monitoring-summary.md
+        echo "" >> monitoring-summary.md
+        echo "Generated at: $(date -u)" >> monitoring-summary.md
+        
+    - name: Upload monitoring summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: monitoring-summary
+        path: monitoring-summary.md
+        retention-days: 7

@@ -1,0 +1,335 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # Unit and Integration Tests
+  unit-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Run type checking
+      working-directory: frontend
+      run: npm run type-check
+      
+    - name: Run linting
+      working-directory: frontend
+      run: npm run lint
+      
+    - name: Run unit tests
+      working-directory: frontend
+      run: npm run test:ci
+      
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.node-version }}
+        path: |
+          frontend/coverage/
+          frontend/test-results.xml
+
+  # E2E Tests
+  e2e-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Build application
+      working-directory: frontend
+      run: npm run build
+      
+    - name: Start backend services
+      run: |
+        # Start backend API (assuming it exists)
+        # docker-compose up -d api
+        
+    - name: Run E2E tests
+      working-directory: frontend
+      run: npm run test:e2e:ci
+      env:
+        CYPRESS_baseUrl: http://localhost:3000
+        
+    - name: Upload Cypress screenshots
+      uses: actions/upload-artifact@v3
+      if: failure()
+      with:
+        name: cypress-screenshots
+        path: frontend/cypress/screenshots/
+        
+    - name: Upload Cypress videos
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: cypress-videos
+        path: frontend/cypress/videos/
+
+  # Visual Regression Tests
+  visual-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Build Storybook
+      working-directory: frontend
+      run: npm run build-storybook
+      
+    - name: Run Percy visual tests
+      working-directory: frontend
+      run: npm run test:visual
+      env:
+        PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
+        PERCY_BRANCH: ${{ github.head_ref }}
+        PERCY_PULL_REQUEST: ${{ github.event.number }}
+
+  # Component Tests (Storybook)
+  component-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Build Storybook
+      working-directory: frontend
+      run: npm run build-storybook
+      
+    - name: Run Storybook tests
+      working-directory: frontend
+      run: npm run storybook:test
+      
+    - name: Upload Storybook build
+      uses: actions/upload-artifact@v3
+      with:
+        name: storybook-build
+        path: frontend/storybook-static/
+
+  # Accessibility Tests
+  accessibility-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Build application
+      working-directory: frontend
+      run: npm run build
+      
+    - name: Run accessibility tests
+      working-directory: frontend
+      run: |
+        # Start the application
+        npm run preview &
+        sleep 10
+        
+        # Run axe-core tests
+        npx @axe-core/cli http://localhost:4173 --exit
+        
+    - name: Upload accessibility report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: accessibility-report
+        path: frontend/accessibility-report.json
+
+  # Performance Tests
+  performance-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install dependencies
+      working-directory: frontend
+      run: npm ci
+      
+    - name: Build application
+      working-directory: frontend
+      run: npm run build
+      
+    - name: Run Lighthouse CI
+      working-directory: frontend
+      run: |
+        npm install -g @lhci/cli
+        npm run preview &
+        sleep 10
+        lhci autorun
+      env:
+        LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+        
+    - name: Upload Lighthouse report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: lighthouse-report
+        path: frontend/.lighthouseci/
+
+  # Quality Gates
+  quality-gates:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, e2e-tests, component-tests]
+    if: always()
+    
+    steps:
+    - name: Check test results
+      run: |
+        if [[ "${{ needs.unit-tests.result }}" != "success" ]]; then
+          echo "Unit tests failed"
+          exit 1
+        fi
+        
+        if [[ "${{ needs.e2e-tests.result }}" != "success" ]]; then
+          echo "E2E tests failed"
+          exit 1
+        fi
+        
+        if [[ "${{ needs.component-tests.result }}" != "success" ]]; then
+          echo "Component tests failed"
+          exit 1
+        fi
+        
+        echo "All tests passed!"
+        
+    - name: Post results to PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const botComment = comments.find(comment => 
+            comment.user.type === 'Bot' && 
+            comment.body.includes('Test Results')
+          );
+          
+          const body = `## Test Results 🧪
+          
+          | Test Suite | Status |
+          |------------|--------|
+          | Unit Tests | ${{ needs.unit-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | E2E Tests | ${{ needs.e2e-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+          | Component Tests | ${{ needs.component-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} |
+          
+          View detailed results in the [Actions tab](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+          `;
+          
+          if (botComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: botComment.id,
+              body: body
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+          }

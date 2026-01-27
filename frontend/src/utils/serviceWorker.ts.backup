@@ -1,0 +1,333 @@
+/**
+ * Service Worker registration and management utilities
+ */
+
+import React from 'react'
+import { performanceMonitor } from './performance'
+
+export interface ServiceWorkerConfig {
+  onUpdate?: (registration: ServiceWorkerRegistration) => void
+  onSuccess?: (registration: ServiceWorkerRegistration) => void
+  onError?: (error: Error) => void
+}
+
+class ServiceWorkerManager {
+  private registration: ServiceWorkerRegistration | null = null
+  private updateAvailable = false
+
+  /**
+   * Register service worker
+   */
+  async register(config: ServiceWorkerConfig = {}): Promise<void> {
+    if (!('serviceWorker' in navigator)) {
+      console.log('Service Worker not supported')
+      return
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('Service Worker registration skipped in development')
+      return
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/'
+      })
+
+      this.registration = registration
+      
+      // Handle updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing
+        if (!newWorker) return
+
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed') {
+            if (navigator.serviceWorker.controller) {
+              // New content available
+              this.updateAvailable = true
+              config.onUpdate?.(registration)
+              performanceMonitor.recordCustomMetric('sw-update-available', 1)
+            } else {
+              // Content cached for first time
+              config.onSuccess?.(registration)
+              performanceMonitor.recordCustomMetric('sw-first-install', 1)
+            }
+          }
+        })
+      })
+
+      // Handle controller change
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload()
+      })
+
+      console.log('Service Worker registered successfully')
+      performanceMonitor.recordCustomMetric('sw-registration-success', 1)
+      
+    } catch (error) {
+      console.error('Service Worker registration failed:', error)
+      config.onError?.(error as Error)
+      performanceMonitor.recordCustomMetric('sw-registration-error', 1, {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+    }
+  }
+
+  /**
+   * Update service worker
+   */
+  async update(): Promise<void> {
+    if (!this.registration) {
+      throw new Error('Service Worker not registered')
+    }
+
+    try {
+      await this.registration.update()
+      performanceMonitor.recordCustomMetric('sw-manual-update', 1)
+    } catch (error) {
+      console.error('Service Worker update failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Skip waiting and activate new service worker
+   */
+  skipWaiting(): void {
+    if (!this.registration?.waiting) {
+      throw new Error('No waiting service worker')
+    }
+
+    this.registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+    performanceMonitor.recordCustomMetric('sw-skip-waiting', 1)
+  }
+
+  /**
+   * Unregister service worker
+   */
+  async unregister(): Promise<boolean> {
+    if (!this.registration) {
+      return false
+    }
+
+    try {
+      const result = await this.registration.unregister()
+      this.registration = null
+      performanceMonitor.recordCustomMetric('sw-unregister', 1)
+      return result
+    } catch (error) {
+      console.error('Service Worker unregistration failed:', error)
+      return false
+    }
+  }
+
+  /**
+   * Get cache statistics
+   */
+  async getCacheStats(): Promise<Record<string, number>> {
+    if (!this.registration?.active) {
+      throw new Error('No active service worker')
+    }
+
+    return new Promise((resolve, reject) => {
+      const messageChannel = new MessageChannel()
+      
+      messageChannel.port1.onmessage = (event) => {
+        if (event.data.type === 'CACHE_STATS') {
+          resolve(event.data.payload)
+        } else {
+          reject(new Error('Unexpected response'))
+        }
+      }
+
+      this.registration!.active!.postMessage(
+        { type: 'GET_CACHE_STATS' },
+        [messageChannel.port2]
+      )
+    })
+  }
+
+  /**
+   * Clear cache
+   */
+  async clearCache(cacheName?: string): Promise<void> {
+    if (!this.registration?.active) {
+      throw new Error('No active service worker')
+    }
+
+    return new Promise((resolve, reject) => {
+      const messageChannel = new MessageChannel()
+      
+      messageChannel.port1.onmessage = (event) => {
+        if (event.data.type === 'CACHE_CLEARED') {
+          resolve()
+        } else {
+          reject(new Error('Unexpected response'))
+        }
+      }
+
+      this.registration!.active!.postMessage(
+        { type: 'CLEAR_CACHE', payload: { cacheName } },
+        [messageChannel.port2]
+      )
+    })
+  }
+
+  /**
+   * Check if update is available
+   */
+  isUpdateAvailable(): boolean {
+    return this.updateAvailable
+  }
+
+  /**
+   * Get registration
+   */
+  getRegistration(): ServiceWorkerRegistration | null {
+    return this.registration
+  }
+
+  /**
+   * Check if service worker is supported
+   */
+  isSupported(): boolean {
+    return 'serviceWorker' in navigator
+  }
+
+  /**
+   * Check if service worker is active
+   */
+  isActive(): boolean {
+    return !!this.registration?.active
+  }
+}
+
+// Singleton instance
+export const serviceWorkerManager = new ServiceWorkerManager()
+
+/**
+ * React hook for service worker management
+ */
+export function useServiceWorker(config: ServiceWorkerConfig = {}) {
+  const [isRegistered, setIsRegistered] = React.useState(false)
+  const [isUpdateAvailable, setIsUpdateAvailable] = React.useState(false)
+  const [error, setError] = React.useState<Error | null>(null)
+
+  React.useEffect(() => {
+    const register = async () => {
+      try {
+        await serviceWorkerManager.register({
+          onSuccess: (registration) => {
+            setIsRegistered(true)
+            config.onSuccess?.(registration)
+          },
+          onUpdate: (registration) => {
+            setIsUpdateAvailable(true)
+            config.onUpdate?.(registration)
+          },
+          onError: (error) => {
+            setError(error)
+            config.onError?.(error)
+          }
+        })
+      } catch (err) {
+        setError(err as Error)
+      }
+    }
+
+    register()
+  }, [])
+
+  const update = React.useCallback(async () => {
+    try {
+      await serviceWorkerManager.update()
+    } catch (err) {
+      setError(err as Error)
+    }
+  }, [])
+
+  const skipWaiting = React.useCallback(() => {
+    try {
+      serviceWorkerManager.skipWaiting()
+      setIsUpdateAvailable(false)
+    } catch (err) {
+      setError(err as Error)
+    }
+  }, [])
+
+  const clearCache = React.useCallback(async (cacheName?: string) => {
+    try {
+      await serviceWorkerManager.clearCache(cacheName)
+    } catch (err) {
+      setError(err as Error)
+    }
+  }, [])
+
+  return {
+    isRegistered,
+    isUpdateAvailable,
+    error,
+    update,
+    skipWaiting,
+    clearCache,
+    isSupported: serviceWorkerManager.isSupported(),
+    isActive: serviceWorkerManager.isActive()
+  }
+}
+
+/**
+ * Service worker update notification component
+ */
+export const ServiceWorkerUpdateNotification: React.FC<{
+  onUpdate?: () => void
+  onDismiss?: () => void
+}> = ({ onUpdate, onDismiss }) => {
+  const { isUpdateAvailable, skipWaiting } = useServiceWorker()
+
+  if (!isUpdateAvailable) return null
+
+  const handleUpdate = () => {
+    skipWaiting()
+    onUpdate?.()
+  }
+
+  const handleDismiss = () => {
+    onDismiss?.()
+  }
+
+  return (
+    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 bg-blue-600 text-white p-4 rounded-lg shadow-lg z-50">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <h4 className="font-semibold mb-1">Update Available</h4>
+          <p className="text-sm opacity-90">
+            A new version of Learning Coach is available. Update now for the latest features and improvements.
+          </p>
+        </div>
+        <button
+          onClick={handleDismiss}
+          className="ml-2 text-white/70 hover:text-white"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="flex gap-2 mt-3">
+        <button
+          onClick={handleUpdate}
+          className="bg-white text-blue-600 px-3 py-1 rounded text-sm font-medium hover:bg-blue-50"
+        >
+          Update Now
+        </button>
+        <button
+          onClick={handleDismiss}
+          className="text-white/90 hover:text-white px-3 py-1 text-sm"
+        >
+          Later
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default serviceWorkerManager

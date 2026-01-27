@@ -1,0 +1,375 @@
+# =============================================================================
+# Docker Security Configuration
+# =============================================================================
+# This file defines security-hardened configurations for all services
+# following security best practices and compliance requirements.
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Frontend Security Configuration
+  # ---------------------------------------------------------------------------
+  frontend:
+    # Security context
+    user: "101:101"  # nginx user
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+      - seccomp:unconfined  # May need adjustment based on requirements
+    
+    # Capabilities (drop all, add only necessary ones)
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - NET_BIND_SERVICE
+    
+    # Read-only root filesystem with writable tmpfs
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev,size=100m
+      - /var/cache/nginx:noexec,nosuid,nodev,size=50m
+      - /var/run:noexec,nosuid,nodev,size=10m
+      - /var/log/nginx:noexec,nosuid,nodev,size=50m
+    
+    # Resource limits for security
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+          pids: 100
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    
+    # Environment variables (security-focused)
+    environment:
+      # Security headers
+      - NGINX_SECURITY_HEADERS=true
+      - NGINX_RATE_LIMITING=true
+      - NGINX_ACCESS_LOG=true
+      
+      # Disable unnecessary features
+      - NGINX_SERVER_TOKENS=off
+      - NGINX_AUTOINDEX=off
+      
+      # Security monitoring
+      - SECURITY_MONITORING=true
+      - INTRUSION_DETECTION=true
+    
+    # Labels for security scanning
+    labels:
+      - "security.scan.enabled=true"
+      - "security.compliance.level=high"
+      - "security.user=nginx"
+      - "security.readonly-rootfs=true"
+
+  # ---------------------------------------------------------------------------
+  # Coach Service Security Configuration
+  # ---------------------------------------------------------------------------
+  coach-service:
+    # Security context
+    user: "1000:1000"  # appuser
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+    
+    # Capabilities
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    
+    # Read-only root filesystem with exceptions
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev,size=100m
+      - /app/logs:noexec,nosuid,nodev,size=50m
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+          pids: 200
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Environment variables for security
+    environment:
+      # Security configuration
+      - SECURITY_ENABLED=true
+      - RATE_LIMITING_ENABLED=true
+      - INPUT_VALIDATION_STRICT=true
+      - SQL_INJECTION_PROTECTION=true
+      
+      # Logging and monitoring
+      - SECURITY_AUDIT_LOG=true
+      - SUSPICIOUS_ACTIVITY_DETECTION=true
+      
+      # Secrets management
+      - USE_SECRETS_MANAGER=true
+      - ENCRYPT_SENSITIVE_DATA=true
+    
+    # Labels for security
+    labels:
+      - "security.scan.enabled=true"
+      - "security.compliance.level=high"
+      - "security.data.classification=sensitive"
+
+  # ---------------------------------------------------------------------------
+  # Runner Service Security Configuration (Special Considerations)
+  # ---------------------------------------------------------------------------
+  runner-service:
+    # Note: Runner service needs special privileges for code execution
+    # This is a controlled security exception with additional monitoring
+    
+    # Security options (limited due to Docker-in-Docker requirement)
+    security_opt:
+      - no-new-privileges:true
+    
+    # Capabilities (minimal set for Docker operations)
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_ADMIN  # Required for Docker-in-Docker
+      - NET_BIND_SERVICE
+    
+    # Resource limits (strict for security)
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+          pids: 50
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    
+    # Environment variables for security
+    environment:
+      # Execution limits
+      - MAX_EXECUTION_TIME=10
+      - MAX_MEMORY_MB=128
+      - MAX_CODE_LENGTH=10000
+      - MAX_CONCURRENT_EXECUTIONS=5
+      
+      # Security features
+      - SANDBOX_ENABLED=true
+      - NETWORK_ISOLATION=true
+      - FILE_SYSTEM_ISOLATION=true
+      - MALICIOUS_CODE_DETECTION=true
+      
+      # Monitoring
+      - EXECUTION_MONITORING=true
+      - SECURITY_AUDIT_LOG=true
+    
+    # Labels for security
+    labels:
+      - "security.scan.enabled=true"
+      - "security.compliance.level=critical"
+      - "security.risk.level=high"
+      - "security.monitoring.enhanced=true"
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Security Configuration
+  # ---------------------------------------------------------------------------
+  postgres:
+    # Security context
+    user: "999:999"  # postgres user
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+    
+    # Capabilities
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - SETGID
+      - SETUID
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+          pids: 100
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Environment variables for security
+    environment:
+      # Security settings
+      - POSTGRES_SSL_MODE=require
+      - POSTGRES_LOG_CONNECTIONS=on
+      - POSTGRES_LOG_DISCONNECTIONS=on
+      - POSTGRES_LOG_STATEMENT=all
+      
+      # Performance and security
+      - POSTGRES_SHARED_PRELOAD_LIBRARIES=pg_stat_statements
+      - POSTGRES_MAX_CONNECTIONS=100
+    
+    # Labels for security
+    labels:
+      - "security.scan.enabled=true"
+      - "security.compliance.level=high"
+      - "security.data.classification=sensitive"
+      - "security.backup.required=true"
+
+  # ---------------------------------------------------------------------------
+  # Redis Security Configuration
+  # ---------------------------------------------------------------------------
+  redis:
+    # Security context
+    user: "999:999"  # redis user
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+    
+    # Capabilities
+    cap_drop:
+      - ALL
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+          pids: 50
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    
+    # Environment variables for security
+    environment:
+      # Security settings
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL,KEYS,CONFIG
+      - REDIS_PROTECTED_MODE=yes
+      
+      # Logging
+      - REDIS_LOG_LEVEL=notice
+    
+    # Labels for security
+    labels:
+      - "security.scan.enabled=true"
+      - "security.compliance.level=medium"
+      - "security.data.classification=session"
+
+  # ---------------------------------------------------------------------------
+  # Qdrant Security Configuration
+  # ---------------------------------------------------------------------------
+  qdrant:
+    # Security context
+    user: "1000:1000"
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+      - apparmor:docker-default
+    
+    # Capabilities
+    cap_drop:
+      - ALL
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+          pids: 50
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    
+    # Environment variables for security
+    environment:
+      # Security settings
+      - QDRANT__SERVICE__ENABLE_CORS=false
+      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY:-}
+      
+      # Logging
+      - QDRANT__LOG_LEVEL=INFO
+    
+    # Labels for security
+    labels:
+      - "security.scan.enabled=true"
+      - "security.compliance.level=medium"
+      - "security.data.classification=content"
+
+# =============================================================================
+# Security Networks
+# =============================================================================
+networks:
+  learning-coach-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "false"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.driver.mtu: "1500"
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
+    labels:
+      - "security.network.isolated=true"
+      - "security.network.monitored=true"
+
+# =============================================================================
+# Security Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_DIR:-./data}/postgres
+    labels:
+      - "security.volume.encrypted=true"
+      - "security.volume.backup=true"
+      - "security.data.classification=sensitive"
+  
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_DIR:-./data}/redis
+    labels:
+      - "security.volume.encrypted=false"
+      - "security.volume.backup=false"
+      - "security.data.classification=session"
+  
+  qdrant_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_DIR:-./data}/qdrant
+    labels:
+      - "security.volume.encrypted=false"
+      - "security.volume.backup=true"
+      - "security.data.classification=content"

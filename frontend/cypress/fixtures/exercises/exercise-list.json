@@ -1,0 +1,43 @@
+{
+  "exercises": [
+    {
+      "id": "exercise-1",
+      "title": "Array Methods Practice",
+      "description": "Practice using JavaScript array methods like map, filter, and reduce",
+      "difficulty": 3,
+      "type": "coding",
+      "language": "javascript",
+      "estimatedTime": 15,
+      "tags": ["arrays", "functional-programming"],
+      "completed": false
+    },
+    {
+      "id": "exercise-2", 
+      "title": "React Component Basics",
+      "description": "Create a simple React component with props and state",
+      "difficulty": 4,
+      "type": "coding",
+      "language": "javascript",
+      "estimatedTime": 25,
+      "tags": ["react", "components"],
+      "completed": true
+    },
+    {
+      "id": "exercise-3",
+      "title": "TypeScript Interfaces",
+      "description": "Define and use TypeScript interfaces for type safety",
+      "difficulty": 5,
+      "type": "coding", 
+      "language": "typescript",
+      "estimatedTime": 20,
+      "tags": ["typescript", "interfaces"],
+      "completed": false
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 25,
+    "pages": 3
+  }
+}

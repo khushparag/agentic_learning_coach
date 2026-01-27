@@ -1,0 +1,113 @@
+# ZAP Scanning Rules Configuration
+# Format: ID	THRESHOLD	[DESCRIPTION]
+
+# High Priority Security Rules
+10021	OFF	# X-Content-Type-Options Header Missing (handled by nginx)
+10020	OFF	# X-Frame-Options Header Missing (handled by nginx)
+10016	OFF	# Web Browser XSS Protection Not Enabled (handled by nginx)
+10017	OFF	# Cross-Domain JavaScript Source File Inclusion (expected for CDNs)
+10054	OFF	# Cookie Without SameSite Attribute (handled by backend)
+10055	OFF	# CSP Scanner (handled by nginx)
+
+# Medium Priority Rules
+10015	MEDIUM	# Incomplete or No Cache-control and Pragma HTTP Header Set
+10019	MEDIUM	# Content-Type Header Missing
+10023	MEDIUM	# Information Disclosure - Debug Error Messages
+10024	MEDIUM	# Information Disclosure - Sensitive Information in URL
+10025	MEDIUM	# Information Disclosure - Sensitive Information in HTTP Referrer Header
+10026	MEDIUM	# HTTP Parameter Override
+10027	MEDIUM	# Information Disclosure - Suspicious Comments
+10028	MEDIUM	# Open Redirect
+10029	MEDIUM	# Cookie Poisoning
+10030	MEDIUM	# User Controllable Charset
+10031	MEDIUM	# User Controllable HTML Element Attribute (Potential XSS)
+10032	MEDIUM	# Viewstate Scanner
+10033	MEDIUM	# Directory Browsing
+10034	MEDIUM	# Heartbleed OpenSSL Vulnerability
+10035	MEDIUM	# Strict-Transport-Security Header Missing
+10036	MEDIUM	# Server Leaks Version Information via "Server" HTTP Response Header Field
+10037	MEDIUM	# Server Leaks Information via "X-Powered-By" HTTP Response Header Field(s)
+10038	MEDIUM	# Content Security Policy (CSP) Header Not Set
+10040	MEDIUM	# Secure Pages Include Mixed Content
+10041	MEDIUM	# HTTP to HTTPS Insecure Transition in Form Post
+10042	MEDIUM	# HTTPS to HTTP Insecure Transition in Form Post
+10043	MEDIUM	# User Controllable JavaScript Event (XSS)
+10044	MEDIUM	# Big Redirect Detected (Potential Sensitive Information Leak)
+10045	MEDIUM	# Source Code Disclosure - /WEB-INF folder
+10046	MEDIUM	# Source Code Disclosure - /META-INF folder
+10047	MEDIUM	# Source Code Disclosure - Java
+10048	MEDIUM	# Remote Code Execution - Shell Shock
+10049	MEDIUM	# Content Cacheability
+10050	MEDIUM	# Retrieved from Cache
+10051	MEDIUM	# Relative Path Confusion
+10052	MEDIUM	# X-ChromeLogger-Data (XCOLD) Header Information Leak
+10053	MEDIUM	# Apache Range Header DoS (CVE-2011-3192)
+10056	MEDIUM	# X-Debug-Token Information Leak
+10057	MEDIUM	# Username Hash Found
+10061	MEDIUM	# X-AspNet-Version Response Header
+10062	MEDIUM	# PII Disclosure
+10063	MEDIUM	# Feature Policy Header Not Set
+10096	MEDIUM	# Timestamp Disclosure
+10097	MEDIUM	# Hash Disclosure
+10098	MEDIUM	# Cross-Domain Misconfiguration
+10099	MEDIUM	# Source Code Disclosure
+
+# Low Priority Rules (Informational)
+10003	LOW	# Charset Mismatch
+10010	LOW	# Cookie No HttpOnly Flag
+10011	LOW	# Cookie Without Secure Flag
+10012	LOW	# Password Autocomplete in Browser
+10013	LOW	# Weak Authentication Method
+10014	LOW	# HTTP Parameter Pollution
+10018	LOW	# Content-Type Header Missing
+10022	LOW	# Information Disclosure - Database Error Messages
+10039	LOW	# X-Backend-Server Header Information Leak
+10058	LOW	# GET for POST
+10059	LOW	# X-AspNet-Version Response Header
+10060	LOW	# X-Powered-By Response Header
+10064	LOW	# Permissions Policy Header Not Set
+10065	LOW	# Private IP Disclosure
+10066	LOW	# Information Disclosure - Referrer
+10067	LOW	# Httpoxy - Proxy Header Misuse
+10068	LOW	# X-Forwarded-For Header Information Leak
+10069	LOW	# X-Real-IP Header Information Leak
+10070	LOW	# Information Disclosure - Sensitive Information in URL
+10071	LOW	# Information Disclosure - Sensitive Information in HTTP Referrer Header
+10072	LOW	# Information Disclosure - Sensitive Information in Cookie
+10073	LOW	# Information Disclosure - Sensitive Information in GET Request
+10074	LOW	# Information Disclosure - Sensitive Information in POST Request
+10075	LOW	# Information Disclosure - Sensitive Information in HTTP Response
+10076	LOW	# Information Disclosure - Sensitive Information in HTTP Request
+10077	LOW	# Information Disclosure - Sensitive Information in HTTP Header
+10078	LOW	# Information Disclosure - Sensitive Information in HTTP Body
+10079	LOW	# Information Disclosure - Sensitive Information in HTTP Parameter
+10080	LOW	# Information Disclosure - Sensitive Information in HTTP File
+10081	LOW	# Information Disclosure - Sensitive Information in HTTP Directory
+10082	LOW	# Information Disclosure - Sensitive Information in HTTP Path
+10083	LOW	# Information Disclosure - Sensitive Information in HTTP Query
+10084	LOW	# Information Disclosure - Sensitive Information in HTTP Fragment
+10085	LOW	# Information Disclosure - Sensitive Information in HTTP Scheme
+10086	LOW	# Information Disclosure - Sensitive Information in HTTP Host
+10087	LOW	# Information Disclosure - Sensitive Information in HTTP Port
+10088	LOW	# Information Disclosure - Sensitive Information in HTTP User Info
+10089	LOW	# Information Disclosure - Sensitive Information in HTTP Authority
+10090	LOW	# Information Disclosure - Sensitive Information in HTTP Registry
+10091	LOW	# Information Disclosure - Sensitive Information in HTTP Opaque
+10092	LOW	# Information Disclosure - Sensitive Information in HTTP Hierarchical
+10093	LOW	# Information Disclosure - Sensitive Information in HTTP Absolute
+10094	LOW	# Information Disclosure - Sensitive Information in HTTP Relative
+10095	LOW	# Information Disclosure - Sensitive Information in HTTP Network Path
+
+# Disable false positives for SPA applications
+90001	OFF	# Insecure JSF ViewState (not applicable to React)
+90002	OFF	# Java Serialization Object (not applicable to React)
+90003	OFF	# Sub Resource Integrity Attribute Missing (handled by build process)
+90004	OFF	# Insufficient Site Isolation Against Spectre Vulnerability (browser-level)
+90005	OFF	# Sec-Fetch Metadata Request Headers (modern browser feature)
+90006	OFF	# Dangerous JS Functions (reviewed and approved)
+
+# Custom rules for React applications
+# Allow common React patterns
+10109	OFF	# Modern Web Application (expected for React SPA)
+10110	OFF	# Dangerous JS Functions (React uses these safely)
+10111	OFF	# Absence of Anti-CSRF Tokens (handled by API layer)

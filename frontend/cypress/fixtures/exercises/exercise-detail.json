@@ -1,0 +1,46 @@
+{
+  "id": "123",
+  "title": "Array Methods Practice",
+  "description": "Practice using JavaScript array methods like map, filter, and reduce to transform and manipulate arrays.",
+  "difficulty": 3,
+  "type": "coding",
+  "language": "javascript",
+  "estimatedTime": 15,
+  "tags": ["arrays", "functional-programming"],
+  "instructions": "Complete the following functions using the appropriate array methods:\n\n1. `doubleNumbers` - Double each number in the array\n2. `filterEvenNumbers` - Return only even numbers\n3. `sumNumbers` - Calculate the sum of all numbers",
+  "starterCode": "// Complete these functions using array methods\n\nfunction doubleNumbers(numbers) {\n  // Your code here\n}\n\nfunction filterEvenNumbers(numbers) {\n  // Your code here\n}\n\nfunction sumNumbers(numbers) {\n  // Your code here\n}",
+  "testCases": [
+    {
+      "input": "[1, 2, 3, 4, 5]",
+      "expected": "[2, 4, 6, 8, 10]",
+      "description": "doubleNumbers should double each number"
+    },
+    {
+      "input": "[1, 2, 3, 4, 5, 6]",
+      "expected": "[2, 4, 6]", 
+      "description": "filterEvenNumbers should return only even numbers"
+    },
+    {
+      "input": "[1, 2, 3, 4, 5]",
+      "expected": "15",
+      "description": "sumNumbers should return the sum of all numbers"
+    }
+  ],
+  "hints": [
+    "Use the map() method to transform each element in an array",
+    "Use the filter() method to select elements that meet a condition",
+    "Use the reduce() method to accumulate values into a single result"
+  ],
+  "resources": [
+    {
+      "title": "MDN Array Methods",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array",
+      "type": "documentation"
+    },
+    {
+      "title": "Functional Programming in JavaScript",
+      "url": "https://example.com/functional-js",
+      "type": "tutorial"
+    }
+  ]
+}

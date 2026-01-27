@@ -1,0 +1,471 @@
+/* Responsive Design Utilities for Learning Coach */
+
+/* CSS Custom Properties for Dynamic Values */
+:root {
+  --vh: 1vh;
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  
+  /* Touch target sizes */
+  --touch-target-min: 44px;
+  --touch-target-comfortable: 48px;
+  
+  /* Responsive spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+}
+
+/* Mobile-first responsive spacing */
+@media (min-width: 640px) {
+  :root {
+    --spacing-xs: 0.375rem;
+    --spacing-sm: 0.75rem;
+    --spacing-md: 1.25rem;
+    --spacing-lg: 2rem;
+    --spacing-xl: 2.5rem;
+    --spacing-2xl: 4rem;
+  }
+}
+
+/* Safe Area Utilities */
+.safe-area-pt {
+  padding-top: var(--safe-area-inset-top);
+}
+
+.safe-area-pr {
+  padding-right: var(--safe-area-inset-right);
+}
+
+.safe-area-pb {
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+.safe-area-pl {
+  padding-left: var(--safe-area-inset-left);
+}
+
+.safe-area-p {
+  padding-top: var(--safe-area-inset-top);
+  padding-right: var(--safe-area-inset-right);
+  padding-bottom: var(--safe-area-inset-bottom);
+  padding-left: var(--safe-area-inset-left);
+}
+
+/* Viewport Height Fix for Mobile */
+.min-h-screen-mobile {
+  min-height: 100vh;
+  min-height: calc(var(--vh, 1vh) * 100);
+}
+
+.h-screen-mobile {
+  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
+}
+
+/* Touch Target Utilities */
+.min-w-touch {
+  min-width: var(--touch-target-min);
+}
+
+.min-h-touch {
+  min-height: var(--touch-target-min);
+}
+
+.min-w-touch-comfortable {
+  min-width: var(--touch-target-comfortable);
+}
+
+.min-h-touch-comfortable {
+  min-height: var(--touch-target-comfortable);
+}
+
+/* Touch-friendly interactive elements */
+.touch-target {
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.touch-target-comfortable {
+  min-width: var(--touch-target-comfortable);
+  min-height: var(--touch-target-comfortable);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsive Text Utilities */
+.text-responsive-xs {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.text-responsive-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.text-responsive-base {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.text-responsive-lg {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.text-responsive-xl {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-xs {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  .text-responsive-sm {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+  
+  .text-responsive-base {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+  
+  .text-responsive-lg {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+  
+  .text-responsive-xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+}
+
+/* Mobile Navigation Utilities */
+.mobile-nav-hidden {
+  transform: translateY(100%);
+  transition: transform 0.3s ease-in-out;
+}
+
+.mobile-nav-visible {
+  transform: translateY(0);
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Responsive Grid Utilities */
+.grid-responsive {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
+}
+
+.grid-responsive-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive-cards {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+/* Responsive Container Utilities */
+.container-responsive {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    max-width: 640px;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .container-responsive {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    max-width: 1024px;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container-responsive {
+    max-width: 1280px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .container-responsive {
+    max-width: 1536px;
+  }
+}
+
+/* Mobile-specific Utilities */
+.mobile-only {
+  display: block;
+}
+
+.desktop-only {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none;
+  }
+  
+  .desktop-only {
+    display: block;
+  }
+}
+
+/* Responsive Flexbox Utilities */
+.flex-responsive {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .flex-responsive {
+    flex-direction: row;
+    gap: 1.5rem;
+  }
+}
+
+.flex-responsive-reverse {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .flex-responsive-reverse {
+    flex-direction: row;
+    gap: 1.5rem;
+  }
+}
+
+/* Scroll Behavior */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent zoom on input focus (iOS) */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="search"],
+textarea,
+select {
+  font-size: 16px;
+}
+
+@media (max-width: 767px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Responsive Image Utilities */
+.img-responsive {
+  max-width: 100%;
+  height: auto;
+}
+
+.img-cover {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.img-contain {
+  object-fit: contain;
+  width: 100%;
+  height: 100%;
+}
+
+/* Mobile Gesture Utilities */
+.touch-pan-x {
+  touch-action: pan-x;
+}
+
+.touch-pan-y {
+  touch-action: pan-y;
+}
+
+.touch-pinch-zoom {
+  touch-action: pinch-zoom;
+}
+
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Responsive Animation Utilities */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High DPI Display Utilities */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .hidpi-hidden {
+    display: none;
+  }
+  
+  .hidpi-visible {
+    display: block;
+  }
+}
+
+.hidpi-visible {
+  display: none;
+}
+
+/* Dark Mode Responsive Utilities */
+@media (prefers-color-scheme: dark) {
+  .dark-mode-responsive {
+    background-color: #1f2937;
+    color: #f9fafb;
+  }
+  
+  .dark-mode-responsive input,
+  .dark-mode-responsive textarea,
+  .dark-mode-responsive select {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+  
+  .print-visible {
+    display: block !important;
+  }
+  
+  * {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  a,
+  a:visited {
+    text-decoration: underline;
+  }
+  
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+  
+  abbr[title]:after {
+    content: " (" attr(title) ")";
+  }
+  
+  .ir a:after,
+  a[href^="javascript:"]:after,
+  a[href^="#"]:after {
+    content: "";
+  }
+  
+  pre,
+  blockquote {
+    border: 1px solid #999;
+    page-break-inside: avoid;
+  }
+  
+  thead {
+    display: table-header-group;
+  }
+  
+  tr,
+  img {
+    page-break-inside: avoid;
+  }
+  
+  img {
+    max-width: 100% !important;
+  }
+  
+  p,
+  h2,
+  h3 {
+    orphans: 3;
+    widows: 3;
+  }
+  
+  h2,
+  h3 {
+    page-break-after: avoid;
+  }
+}
