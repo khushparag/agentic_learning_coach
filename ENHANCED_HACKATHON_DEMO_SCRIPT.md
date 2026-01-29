@@ -7,10 +7,6 @@
 docker-compose up -d
 sleep 30
 
-# 2. Start frontend development server
-cd frontend && npm run dev &
-cd ..
-
 # 3. Verify system health
 curl http://localhost:8002/health/detailed
 
@@ -19,10 +15,11 @@ curl http://localhost:8002/health/detailed
 # - VS Code with .kiro folder open
 # - Browser with README.md
 # - Browser with Frontend at http://localhost:3000
-# - Browser with Swagger UI at http://localhost:8000/docs
+# - Browser with Swagger UI at http://localhost:8002/docs
 
 # 5. Test all demo commands
 ./scripts/demo-test.sh
+# Or on Windows: scripts\demo-test.bat
 ```
 
 ---
@@ -63,7 +60,7 @@ curl http://localhost:8002/health/detailed
 
 ### **1:00 - 1:10** | System Health & Frontend Launch
 **SHOW:** Switch to terminal, run health check, then open frontend
-**TYPE:** `curl -s http://localhost:8000/health/detailed | jq`
+**TYPE:** `curl -s http://localhost:8002/health/detailed | jq`
 **THEN SHOW:** Browser with frontend at http://localhost:3000
 **SAY:** "All seven agents are operational. Now let's see the complete user experience through our React frontend."
 
@@ -95,7 +92,7 @@ curl http://localhost:8002/health/detailed
 **SHOW:** Switch to terminal, demonstrate API calls
 **TYPE:** 
 ```bash
-curl -X POST http://localhost:8000/api/v1/agents/orchestrator/route \
+curl -X POST http://localhost:8002/api/v1/agents/orchestrator/route \
   -H "Content-Type: application/json" \
   -d '{"intent": "assess_skill_level", "payload": {"user_id": "demo-user", "target_technology": "React"}}'
 ```
@@ -105,7 +102,7 @@ curl -X POST http://localhost:8000/api/v1/agents/orchestrator/route \
 **SHOW:** Terminal, run curriculum creation API call
 **TYPE:**
 ```bash
-curl -X POST http://localhost:8000/api/v1/curriculum/create \
+curl -X POST http://localhost:8002/api/v1/curriculum/create \
   -H "Content-Type: application/json" \
   -d '{"user_id": "demo-user", "goals": ["Build a React app"], "time_constraints": {"hours_per_week": 5}}'
 ```
@@ -115,7 +112,7 @@ curl -X POST http://localhost:8000/api/v1/curriculum/create \
 **SHOW:** Terminal, demonstrate code submission and adaptive learning
 **TYPE:**
 ```bash
-curl -X POST http://localhost:8000/api/v1/submissions/submit \
+curl -X POST http://localhost:8002/api/v1/submissions/submit \
   -H "Content-Type: application/json" \
   -d '{"code": "const Welcome = ({name}) => <h1>Hello, {name}!</h1>;", "language": "javascript"}'
 ```
@@ -172,23 +169,23 @@ curl http://localhost:3000
 # Enhanced demo commands with frontend integration
 
 echo "=== SYSTEM HEALTH ==="
-curl -s http://localhost:8000/health/detailed | jq '.status'
+curl -s http://localhost:8002/health/detailed | jq '.status'
 
 echo -e "\n=== FRONTEND STATUS ==="
 curl -s http://localhost:3000 | head -5
 
 echo -e "\n=== SKILL ASSESSMENT ==="
-curl -s -X POST http://localhost:8000/api/v1/agents/orchestrator/route \
+curl -s -X POST http://localhost:8002/api/v1/agents/orchestrator/route \
   -H "Content-Type: application/json" \
   -d '{"intent": "assess_skill_level", "payload": {"user_id": "demo-user", "target_technology": "React"}}' | jq '.data.skill_level'
 
 echo -e "\n=== CURRICULUM CREATION ==="
-curl -s -X POST http://localhost:8000/api/v1/curriculum/create \
+curl -s -X POST http://localhost:8002/api/v1/curriculum/create \
   -H "Content-Type: application/json" \
   -d '{"user_id": "demo-user", "goals": ["Build a React app"], "time_constraints": {"hours_per_week": 5}}' | jq '.data.topics | length'
 
 echo -e "\n=== CODE SUBMISSION ==="
-curl -s -X POST http://localhost:8000/api/v1/submissions/submit \
+curl -s -X POST http://localhost:8002/api/v1/submissions/submit \
   -H "Content-Type: application/json" \
   -d '{"code": "const Welcome = ({name}) => <h1>Hello, {name}!</h1>;", "language": "javascript"}' | jq '.data.passed'
 
