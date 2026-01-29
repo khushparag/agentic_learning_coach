@@ -1,0 +1,99 @@
+fix(demo): Correct API port configuration and enhance cross-platform compatibility in hackathon demo script
+
+This commit addresses critical configuration inconsistencies and platform compatibility issues in the enhanced hackathon demonstration script that were preventing successful demo execution across different environments.
+
+## Primary Changes
+
+### Port Configuration Corrections (8000 → 8002)
+- **Line 10**: Updated health check endpoint from `http://localhost:8000/health/detailed` to `http://localhost:8002/health/detailed`
+- **Line 22**: Corrected Swagger UI documentation URL from `http://localhost:8000/docs` to `http://localhost:8002/docs`
+- **Line 66**: Fixed health check command in demo timeline from `curl -s http://localhost:8000/health/detailed | jq` to `curl -s http://localhost:8002/health/detailed | jq`
+- **Line 98**: Updated orchestrator agent routing endpoint from `http://localhost:8000/api/v1/agents/orchestrator/route` to `http://localhost:8002/api/v1/agents/orchestrator/route`
+- **Line 108**: Corrected curriculum creation endpoint from `http://localhost:8000/api/v1/curriculum/create` to `http://localhost:8002/api/v1/curriculum/create`
+- **Line 118**: Fixed code submission endpoint from `http://localhost:8000/api/v1/submissions/submit` to `http://localhost:8002/api/v1/submissions/submit`
+- **Line 175**: Updated automated health check script from `curl -s http://localhost:8000/health/detailed | jq '.status'` to `curl -s http://localhost:8002/health/detailed | jq '.status'`
+- **Line 181**: Corrected skill assessment API call from `http://localhost:8000/api/v1/agents/orchestrator/route` to `http://localhost:8002/api/v1/agents/orchestrator/route`
+- **Line 185**: Fixed curriculum creation API call from `http://localhost:8000/api/v1/curriculum/create` to `http://localhost:8002/api/v1/curriculum/create`
+- **Line 189**: Updated code submission API call from `http://localhost:8000/api/v1/submissions/submit` to `http://localhost:8002/api/v1/submissions/submit`
+
+### Development Server Configuration Optimization
+- **Lines 10-13**: Removed redundant frontend development server startup commands (`cd frontend && npm run dev & cd ..`) from the setup section
+- This change eliminates potential race conditions and port conflicts during demo setup
+- The frontend server is now expected to be started independently, providing better control over the demo environment
+
+### Cross-Platform Compatibility Enhancement
+- **Line 25**: Added Windows batch file reference `# Or on Windows: scripts\demo-test.bat` alongside the existing Unix shell script reference
+- This addition ensures that Windows users have clear guidance on executing the demo test script using the appropriate platform-specific command
+- Maintains backward compatibility while extending support to Windows development environments
+
+## Technical Impact Analysis
+
+### Port Standardization Benefits
+The port correction from 8000 to 8002 aligns the demo script with the actual FastAPI service configuration as defined in the docker-compose.yml and application settings. This change:
+- Eliminates connection failures during live demonstrations
+- Ensures consistency between documentation and actual service endpoints
+- Prevents confusion for developers following the demo script
+- Aligns with the production deployment configuration where the API service runs on port 8002
+
+### Development Workflow Improvements
+The removal of automatic frontend server startup provides several advantages:
+- Reduces complexity in the demo setup process
+- Eliminates potential port conflicts between services
+- Allows for better error handling and debugging during demo preparation
+- Provides presenters with more control over the timing of service initialization
+- Reduces the risk of race conditions between backend and frontend service startup
+
+### Platform Inclusivity Enhancement
+The addition of Windows-specific command references:
+- Expands the accessibility of the demo to Windows-based development environments
+- Provides clear guidance for cross-platform demo execution
+- Maintains consistency with the project's cross-platform development approach
+- Reduces barriers to entry for Windows developers participating in hackathons or demonstrations
+
+## Quality Assurance Considerations
+
+### Endpoint Consistency Verification
+All API endpoint references have been systematically updated to ensure:
+- Consistent port usage across all curl commands
+- Proper alignment with the actual service configuration
+- Elimination of potential 404 errors during live demonstrations
+- Maintenance of the complete API workflow demonstration
+
+### Demo Script Reliability
+These changes significantly improve the reliability of the demo script by:
+- Ensuring all HTTP requests target the correct service endpoints
+- Reducing the likelihood of connection timeouts or failures
+- Providing clear platform-specific execution instructions
+- Maintaining the logical flow of the demonstration while fixing technical issues
+
+## Backward Compatibility Assessment
+
+### Configuration Changes
+The port changes are breaking changes for environments that may have been configured to use port 8000, but this is necessary to align with the correct service configuration. The changes:
+- Reflect the actual production configuration
+- Maintain consistency with docker-compose service definitions
+- Ensure compatibility with the current application architecture
+
+### Script Execution Compatibility
+The removal of automatic frontend startup maintains compatibility with existing demo procedures while:
+- Providing more explicit control over service initialization
+- Reducing potential conflicts with existing development server instances
+- Allowing for better error handling and troubleshooting during demos
+
+## Testing and Validation Requirements
+
+### Pre-Demo Verification Steps
+These changes require validation of:
+- FastAPI service accessibility on port 8002
+- Swagger UI availability at the corrected endpoint
+- Successful execution of all curl commands with updated endpoints
+- Cross-platform compatibility of the demo-test script references
+
+### Integration Testing Considerations
+The updated endpoints should be verified against:
+- The actual docker-compose service configuration
+- The FastAPI application routing configuration
+- The health check endpoint implementation
+- The API versioning and routing structure
+
+This commit ensures that the enhanced hackathon demo script accurately reflects the current system configuration while improving cross-platform compatibility and reducing potential points of failure during live demonstrations.
