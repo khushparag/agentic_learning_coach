@@ -384,3 +384,209 @@ def resource_query_strategy(draw: st.DrawFn) -> dict:
         'skill_level': draw(skill_level_strategy()),
         'content_type': draw(st.sampled_from(['article', 'video', 'documentation', 'tutorial']))
     }
+
+
+# Visual branding strategies for video testing
+
+@st.composite
+def typography_config_strategy(draw: st.DrawFn) -> dict:
+    """Generate typography configurations for video sections."""
+    font_families = [
+        'Inter, sans-serif',
+        'JetBrains Mono, monospace',
+        'Arial, sans-serif',  # Non-standard for testing
+        'Helvetica, sans-serif'  # Non-standard for testing
+    ]
+    
+    font_weights = ['400', '500', '600', 'bold', 'normal']
+    font_sizes = [14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72]
+    line_heights = [1.1, 1.2, 1.3, 1.4, 1.5, 1.6]
+    
+    return {
+        'title': {
+            'fontSize': draw(st.sampled_from([48, 52, 56, 64, 72])),
+            'fontWeight': draw(st.sampled_from(['bold', '700', '800'])),
+            'fontFamily': draw(st.sampled_from(font_families)),
+            'lineHeight': draw(st.sampled_from([1.1, 1.2, 1.3]))
+        },
+        'subtitle': {
+            'fontSize': draw(st.sampled_from([28, 32, 36, 40])),
+            'fontWeight': draw(st.sampled_from(['600', '700', 'semibold'])),
+            'fontFamily': draw(st.sampled_from(font_families)),
+            'lineHeight': draw(st.sampled_from([1.2, 1.3, 1.4]))
+        },
+        'body': {
+            'fontSize': draw(st.sampled_from([20, 22, 24, 26, 28])),
+            'fontWeight': draw(st.sampled_from(['400', '500', 'normal'])),
+            'fontFamily': draw(st.sampled_from(font_families)),
+            'lineHeight': draw(st.sampled_from([1.3, 1.4, 1.5, 1.6]))
+        },
+        'code': {
+            'fontSize': draw(st.sampled_from([16, 18, 20, 22])),
+            'fontWeight': draw(st.sampled_from(['400', 'normal'])),
+            'fontFamily': draw(st.sampled_from(['JetBrains Mono, monospace', 'Consolas, monospace', 'Monaco, monospace'])),
+            'lineHeight': draw(st.sampled_from([1.4, 1.5, 1.6]))
+        },
+        'caption': {
+            'fontSize': draw(st.sampled_from([14, 16, 18, 20])),
+            'fontWeight': draw(st.sampled_from(['400', '500', 'normal'])),
+            'fontFamily': draw(st.sampled_from(font_families)),
+            'lineHeight': draw(st.sampled_from([1.2, 1.3, 1.4]))
+        }
+    }
+
+
+@st.composite
+def color_palette_strategy(draw: st.DrawFn) -> dict:
+    """Generate color palette configurations for video sections."""
+    # Standard brand colors
+    brand_colors = {
+        'primary': '#3b82f6',
+        'secondary': '#10b981',
+        'accent': '#8b5cf6',
+        'success': '#22c55e',
+        'warning': '#f59e0b',
+        'error': '#ef4444',
+        'info': '#06b6d4'
+    }
+    
+    # Alternative colors for testing consistency
+    alt_colors = {
+        'primary': '#2563eb',  # Slightly different blue
+        'secondary': '#059669',  # Slightly different green
+        'accent': '#7c3aed',  # Slightly different purple
+    }
+    
+    # Background colors
+    background_colors = {
+        'dark': '#0f172a',
+        'medium': '#1e293b',
+        'light': '#334155'
+    }
+    
+    alt_backgrounds = {
+        'dark': '#111827',  # Alternative dark
+        'medium': '#1f2937',  # Alternative medium
+        'light': '#374151'  # Alternative light
+    }
+    
+    # Text colors
+    text_colors = {
+        'primary': '#f8fafc',
+        'secondary': '#e2e8f0',
+        'muted': '#94a3b8'
+    }
+    
+    # Randomly choose between standard and alternative colors for testing
+    use_standard = draw(st.booleans())
+    colors = brand_colors if use_standard else {**brand_colors, **alt_colors}
+    
+    use_standard_bg = draw(st.booleans())
+    backgrounds = background_colors if use_standard_bg else alt_backgrounds
+    
+    return {
+        **colors,
+        'background': backgrounds,
+        'text': text_colors
+    }
+
+
+@st.composite
+def design_token_strategy(draw: st.DrawFn) -> dict:
+    """Generate design token configurations for video sections."""
+    # Standard spacing scale
+    spacing_scale = {
+        'xs': 4, 'sm': 8, 'md': 16, 'lg': 24, 'xl': 32, 'xxl': 48, 'xxxl': 64
+    }
+    
+    # Alternative spacing for testing
+    alt_spacing = {
+        'xs': 6, 'sm': 10, 'md': 18, 'lg': 26, 'xl': 34, 'xxl': 50, 'xxxl': 66
+    }
+    
+    # Border radius scale
+    radius_scale = {
+        'none': 0, 'sm': 4, 'md': 8, 'lg': 12, 'xl': 16, 'full': 9999
+    }
+    
+    alt_radius = {
+        'none': 0, 'sm': 6, 'md': 10, 'lg': 14, 'xl': 18, 'full': 9999
+    }
+    
+    # Choose between standard and alternative tokens
+    use_standard_spacing = draw(st.booleans())
+    use_standard_radius = draw(st.booleans())
+    
+    spacing = spacing_scale if use_standard_spacing else alt_spacing
+    border_radius = radius_scale if use_standard_radius else alt_radius
+    
+    return {
+        'spacing': spacing,
+        'borderRadius': border_radius
+    }
+
+
+@st.composite
+def brand_element_strategy(draw: st.DrawFn) -> dict:
+    """Generate brand element configurations for video sections."""
+    logo_sizes = [80, 100, 120, 140, 160]
+    logo_positions = ['left', 'center', 'right', 'top-left', 'top-right']
+    themes = ['dark', 'light', 'auto', 'high-contrast']
+    
+    return {
+        'logo': {
+            'size': draw(st.sampled_from(logo_sizes)),
+            'position': draw(st.sampled_from(logo_positions))
+        },
+        'theme': draw(st.sampled_from(themes))
+    }
+
+
+@st.composite
+def animation_config_strategy(draw: st.DrawFn) -> list:
+    """Generate animation configurations for video sections."""
+    animation_types = ['fade', 'slide', 'scale', 'rotate', 'bounce']
+    durations = [0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0]
+    easing_functions = ['ease-in', 'ease-out', 'ease-in-out', 'linear', 'bounce']
+    
+    num_animations = draw(st.integers(min_value=1, max_value=5))
+    animations = []
+    
+    for _ in range(num_animations):
+        animations.append({
+            'type': draw(st.sampled_from(animation_types)),
+            'duration': draw(st.sampled_from(durations)),
+            'easing': draw(st.sampled_from(easing_functions)),
+            'delay': draw(st.floats(min_value=0.0, max_value=2.0))
+        })
+    
+    return animations
+
+
+@st.composite
+def video_section_strategy(draw: st.DrawFn) -> list:
+    """Generate complete video section configurations for branding consistency testing."""
+    section_names = [
+        'introduction', 'overview', 'architecture', 'technology', 
+        'user-journey', 'features', 'development', 'conclusion'
+    ]
+    
+    num_sections = draw(st.integers(min_value=2, max_value=8))
+    sections = []
+    
+    for i in range(num_sections):
+        section_name = draw(st.sampled_from(section_names))
+        
+        section = {
+            'name': f"{section_name}-{i}",
+            'typography': draw(typography_config_strategy()),
+            'colors': draw(color_palette_strategy()),
+            'spacing': draw(design_token_strategy())['spacing'],
+            'borderRadius': draw(design_token_strategy())['borderRadius'],
+            **draw(brand_element_strategy()),
+            'animations': draw(animation_config_strategy())
+        }
+        
+        sections.append(section)
+    
+    return sections

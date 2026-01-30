@@ -15,15 +15,15 @@ Built with [Kiro CLI](https://kiro.dev) using spec-driven development.
 <div align="center">
 
 ### 🏠 Main Dashboard
-![Dashboard](screenshots/01-dashboard.png)
+![Main Dashboard](screenshots/screenshot-main-dashboard.png)
 *Personalized learning dashboard with progress tracking, XP system, and today's tasks*
 
 ### 🎯 Interactive Exercises
-![Exercises](screenshots/04-exercises.png)
+![Exercises](screenshots/screenshot-exercises.png)
 *Code editor with real-time feedback, test execution, and adaptive hints*
 
 ### 🛤️ Learning Path Visualization
-![Learning Path](screenshots/03-learning-path.png)
+![Learning Path](screenshots/screenshot-learning-path.png)
 *AI-generated curriculum with dependency tracking and progress visualization*
 
 ### 🏆 Gamification & Social Features
@@ -31,22 +31,22 @@ Built with [Kiro CLI](https://kiro.dev) using spec-driven development.
 <tr>
 <td width="50%">
 
-![Achievements](screenshots/07-achievements.png)
+![Dashboard](screenshots/screenshot-dashboard.png)
 *Achievement system with badges, XP, and streaks*
 
 </td>
 <td width="50%">
 
-![Social](screenshots/06-social.png)
-*Peer challenges and collaborative learning*
+![Settings](screenshots/screenshot-settings.png)
+*Customizable settings and preferences*
 
 </td>
 </tr>
 </table>
 
-### 📱 Mobile-Responsive Design
-![Mobile Dashboard](screenshots/12-mobile-dashboard.png)
-*Fully responsive interface optimized for mobile learning*
+### 📱 Onboarding Experience
+![Onboarding](screenshots/screenshot-onboarding-goals.png)
+*Guided onboarding with goal setting and skill assessment*
 
 </div>
 

@@ -217,3 +217,6 @@ frontend/.env.development.local
 
 # Screenshots directory (generated content)
 screenshots/
+
+#Video project
+video-project

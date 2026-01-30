@@ -66,3 +66,27 @@ def hypothesis_settings() -> Dict[str, Any]:
 def min_property_test_iterations() -> int:
     """Minimum number of iterations for property tests (from requirements)."""
     return 100
+
+
+@pytest.fixture
+def video_config() -> Dict[str, Any]:
+    """Video configuration for comprehensive project video testing."""
+    return {
+        'width': 1920,
+        'height': 1080,
+        'fps': 30,
+        'duration_seconds': 600,  # 10 minutes
+        'total_frames': 18000,
+        'sections': 8
+    }
+
+
+@pytest.fixture
+def section_config() -> Dict[str, Any]:
+    """Section configuration for video branding consistency testing."""
+    return {
+        'min_sections': 2,
+        'max_sections': 8,
+        'required_elements': ['typography', 'colors', 'spacing', 'borderRadius'],
+        'optional_elements': ['logo', 'theme', 'animations']
+    }
